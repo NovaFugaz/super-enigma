@@ -8,7 +8,7 @@ export default function HomePage() {
 
       <EmptyState
         title="Próximamente"
-        description="Aquí aparecerán los instrumentos más solicitados en mesón."
+        description="Aquí aparecerán los instrumentos destacados."
       />
     </section>
   )

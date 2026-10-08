@@ -175,3 +175,52 @@
     @apply transition-colors hover:text-costa-ink;
   }
 }
+
+  /* Contacto / Mapa */
+  .contact-grid {
+    @apply mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)];
+  }
+  /* isolate: evita que los z-index internos de Leaflet tapen el header sticky */
+  .store-map-wrapper {
+    @apply isolate h-96 overflow-hidden rounded-2xl border border-costa-mist shadow-sm lg:h-[34rem];
+  }
+  .store-map {
+    @apply h-full w-full;
+  }
+  .location-item {
+    @apply flex w-full items-center gap-3 rounded-xl border border-costa-mist bg-white px-4 py-3 text-left text-costa-ink transition-colors hover:bg-costa-mist/30;
+  }
+  .location-item-active {
+    @apply border-costa-deep bg-costa-deep text-white hover:bg-costa-deep;
+  }
+  .location-dot {
+    @apply size-3 shrink-0 rounded-full;
+  }
+  .location-dot-store {
+    @apply bg-costa-teal ring-2 ring-white;
+  }
+  .location-dot-pickup {
+    @apply bg-costa-steel ring-2 ring-white;
+  }
+  .location-detail {
+    @apply rounded-2xl border border-costa-mist bg-white p-5;
+  }
+  .btn-outline {
+    @apply inline-block rounded-lg border border-costa-deep px-4 py-2 text-sm font-semibold text-costa-deep transition-colors hover:bg-costa-mist/40;
+  }
+  .map-pin-wrapper {
+    background: transparent;
+    border: 0;
+  }
+  .map-pin {
+    display: block;
+    width: 30px;
+    height: 30px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 3px solid #fff;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+  }
+  .map-pin-store { background: var(--color-costa-deep); }
+  .map-pin-pickup { background: var(--color-costa-steel); }
+  .map-pin-active { outline: 3px solid var(--color-costa-teal); }

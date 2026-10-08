@@ -26,8 +26,7 @@ export default function Footer() {
               <h3 className="footer-title">Horarios de Atención</h3>
               <div className="footer-text">
                 <p><span className="footer-strong">Lunes a Viernes:</span> 10:30 – 19:30 hrs</p>
-                <p><span className="footer-strong">Sábados de Taller:</span> 11:00 – 15:00 hrs</p>
-                <p><span className="footer-strong">Domingos:</span> Cerrado</p>
+                <p><span className="footer-strong">Sábados y Domingos:</span> Cerrado</p>
               </div>
             </div>
 
