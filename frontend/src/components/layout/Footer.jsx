@@ -43,8 +43,7 @@ export default function Footer() {
               <h3 className="footer-title">Envíos</h3>
               <div className="footer-text">
                 <p>
-                  Despacho protegido a todo Chile con embalaje hermético de humedad
-                  controlada vía:
+                  Despacho protegido a todo Chile.
                 </p>
                 <div className="flex gap-2">
                   <span className="footer-chip">Starken</span>
