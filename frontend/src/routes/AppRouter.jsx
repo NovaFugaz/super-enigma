@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import MainLayout from '../components/layout/MainLayout.jsx'
 import EmptyState from '../components/common/EmptyState.jsx'
 import HomePage from '../modules/catalog/HomePage.jsx'
+import ContactPage from '../modules/contact/ContactPage.jsx'
 
 function ComingSoon() {
   return (
@@ -19,7 +20,8 @@ export default function AppRouter() {
     <Routes>
       <Route element={<MainLayout />}>
         <Route index element={<HomePage />} />
-        {/* Aquí irán: catalogo, pedidos, nosotros, contacto, login, registro, carrito */}
+        <Route path="contacto" element={<ContactPage />} />
+          {/* Aquí irán: catalogo, pedidos, nosotros, login, registro, carrito */}
         <Route path="*" element={<ComingSoon />} />
       </Route>
     </Routes>
