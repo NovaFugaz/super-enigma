@@ -3,6 +3,7 @@ import MainLayout from '../components/layout/MainLayout.jsx'
 import EmptyState from '../components/common/EmptyState.jsx'
 import HomePage from '../modules/catalog/HomePage.jsx'
 import ContactPage from '../modules/contact/ContactPage.jsx'
+import AboutPage from '../modules/about/AboutPage.jsx'
 
 function ComingSoon() {
   return (
@@ -21,6 +22,7 @@ export default function AppRouter() {
       <Route element={<MainLayout />}>
         <Route index element={<HomePage />} />
         <Route path="contacto" element={<ContactPage />} />
+        <Route path="nosotros" element={<AboutPage />} />
           {/* Aquí irán: catalogo, pedidos, nosotros, login, registro, carrito */}
         <Route path="*" element={<ComingSoon />} />
       </Route>
