@@ -52,7 +52,7 @@ export default function Header() {
           </span>
           <span>
             <span className="brand-name">Sonido Vivo</span>
-            <span className="brand-tagline">Viña del Mar • Luthier &amp; Audio</span>
+            <span className="brand-tagline">Viña del Mar</span>
           </span>
         </Link>
 
