@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import Navbar from "./Navbar.jsx"
+import CartSidebar from "../cart/CartSidebar.jsx"
 
 const iconProps = {
   width: 18,
@@ -41,53 +42,64 @@ const MenuIcon = ({ open }) => (
 
 export default function Header() {
   const [open, setOpen] = useState(false)
+  const [cartOpen, setCartOpen] = useState(false)
   const closeMenu = () => setOpen(false)
+  const closeCart = () => setCartOpen(false)
 
   return (
-    <header className="site-header">
-      <div className="page-container header-inner">
-        <Link to="/" className="brand" onClick={closeMenu}>
-          <span className="brand-mark">
-            <NoteIcon />
-          </span>
-          <span>
-            <span className="brand-name">Sonido Vivo</span>
-            <span className="brand-tagline">Viña del Mar</span>
-          </span>
-        </Link>
-
-        <label className="search-box">
-          <SearchIcon />
-          <input type="search" placeholder="Buscar" aria-label="Buscar productos" />
-        </label>
-
-        {/* Escritorio*/}
-        <Navbar />
-
-        <div className="header-actions">
-          <Link to="/login" className="auth-link">
-            Iniciar sesión
+    <>
+      <header className="site-header">
+        <div className="page-container header-inner">
+          <Link to="/" className="brand" onClick={closeMenu}>
+            <span className="brand-mark">
+              <NoteIcon />
+            </span>
+            <span>
+              <span className="brand-name">Sonido Vivo</span>
+              <span className="brand-tagline">Viña del Mar</span>
+            </span>
           </Link>
-          <Link to="/registro" className="auth-register">
-            Registrarse
-          </Link>
-          <Link to="/carrito" className="btn-cart" aria-label="Ver carrito">
-            <CartIcon />
-          </Link>
-          <button
-            type="button"
-            className="nav-toggle"
-            aria-label="Abrir menú"
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-          >
-            <MenuIcon open={open} />
-          </button>
+
+          <label className="search-box">
+            <SearchIcon />
+            <input type="search" placeholder="Buscar" aria-label="Buscar productos" />
+          </label>
+
+          {/* Escritorio*/}
+          <Navbar />
+
+          <div className="header-actions">
+            <Link to="/login" className="auth-link">
+              Iniciar sesión
+            </Link>
+            <Link to="/registro" className="auth-register">
+              Registrarse
+            </Link>
+            <button
+              type="button"
+              className="btn-cart"
+              aria-label="Abrir carrito"
+              onClick={() => setCartOpen(true)}
+            >
+              <CartIcon />
+            </button>
+            <button
+              type="button"
+              className="nav-toggle"
+              aria-label="Abrir menú"
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+            >
+              <MenuIcon open={open} />
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Para movil */}
-      {open && <Navbar mobile onNavigate={closeMenu} />}
-    </header>
+        {/* Para movil */}
+        {open && <Navbar mobile onNavigate={closeMenu} />}
+      </header>
+
+      <CartSidebar open={cartOpen} onClose={closeCart} />
+    </>
   )
 }

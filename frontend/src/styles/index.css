@@ -19,9 +19,11 @@
   html {
     scroll-behavior: smooth;
   }
+
   body {
     @apply bg-costa-surface font-sans text-costa-ink antialiased;
   }
+
   h1,
   h2,
   h3,
@@ -31,33 +33,58 @@
 }
 
 @layer components {
+
   /*  Layout general  */
   .page-container {
     @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
   }
+
   .app-shell {
     @apply flex min-h-screen flex-col;
   }
+
   .app-main {
     @apply flex-1;
+  }
+
+  /*  Botones reutilizables  */
+  .btn-primary {
+    @apply inline-block rounded-lg bg-costa-deep px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-costa-ink;
+  }
+
+  .btn-outline {
+    @apply inline-block rounded-lg border border-costa-deep px-4 py-2 text-center text-sm font-semibold text-costa-deep transition-colors hover:bg-costa-mist/40;
+  }
+
+  .btn-danger-outline {
+    @apply inline-block rounded-lg border border-red-300 px-4 py-2 text-center text-sm font-semibold text-red-700 transition-colors hover:bg-red-50;
+  }
+
+  .btn-block {
+    @apply block w-full;
   }
 
   /*  Header / Navbar  */
   .site-header {
     @apply sticky top-0 z-40 border-b border-costa-mist/60 bg-white/85 backdrop-blur;
   }
+
   .header-inner {
     @apply flex min-h-16 items-center gap-4 py-2;
   }
+
   .brand {
     @apply flex shrink-0 items-center gap-3;
   }
+
   .brand-mark {
     @apply grid size-9 place-items-center rounded-lg bg-costa-deep text-white;
   }
+
   .brand-name {
     @apply block font-display text-lg font-semibold leading-none text-costa-ink;
   }
+
   .brand-tagline {
     @apply mt-1 block text-[0.65rem] leading-tight text-costa-sage;
   }
@@ -65,6 +92,7 @@
   .search-box {
     @apply hidden items-center gap-2 rounded-full border border-costa-mist bg-white px-3 py-1.5 text-costa-sage focus-within:border-costa-teal md:flex;
   }
+
   .search-box input {
     @apply w-28 bg-transparent text-sm text-costa-ink outline-none placeholder:text-costa-sage lg:w-32;
   }
@@ -72,9 +100,11 @@
   .nav-desktop {
     @apply ml-auto hidden items-center gap-1 lg:flex;
   }
+
   .nav-link {
     @apply rounded-lg px-3 py-2 text-center text-sm font-medium leading-tight text-costa-deep transition-colors hover:bg-costa-mist/40;
   }
+
   /* NavLink agrega la clase "active" automáticamente */
   .nav-link.active {
     @apply bg-costa-deep text-white hover:bg-costa-deep;
@@ -83,21 +113,27 @@
   .header-actions {
     @apply ml-auto flex items-center gap-2 lg:ml-0;
   }
+
   .auth-link {
     @apply hidden rounded-lg px-3 py-2 text-sm font-medium text-costa-deep transition-colors hover:bg-costa-mist/40 sm:inline-block;
   }
+
   .auth-register {
     @apply hidden rounded-lg bg-costa-deep px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-costa-ink sm:inline-block;
   }
+
   .btn-cart {
     @apply grid size-10 place-items-center rounded-lg border border-costa-mist bg-white text-costa-deep transition-colors hover:bg-costa-mist/40;
   }
+
   .nav-toggle {
     @apply grid size-9 place-items-center rounded-lg border border-costa-mist text-costa-deep lg:hidden;
   }
+
   .nav-mobile {
     @apply flex flex-col gap-1 border-t border-costa-mist/60 bg-white px-4 py-3 lg:hidden;
   }
+
   .nav-mobile .nav-link {
     @apply text-left;
   }
@@ -106,9 +142,11 @@
   .section-kicker {
     @apply text-xs font-semibold uppercase tracking-widest text-costa-teal;
   }
+
   .section-title {
     @apply mt-1 text-3xl font-medium text-costa-ink;
   }
+
   .featured-section {
     @apply py-12 sm:py-16;
   }
@@ -117,35 +155,215 @@
   .empty-state {
     @apply mt-6 rounded-2xl border border-dashed border-costa-sage/60 bg-white/60 px-6 py-16 text-center;
   }
+
   .empty-state-title {
     @apply font-display text-xl text-costa-deep;
   }
+
   .empty-state-text {
     @apply mt-2 text-sm text-costa-sage;
   }
 
-  /* Footer */
+  /*  Carrito: sidebar  */
+  .cart-overlay {
+    @apply invisible fixed inset-0 z-50 bg-costa-ink/50 opacity-0 duration-300;
+    transition-property: opacity, visibility;
+  }
+
+  .cart-overlay-open {
+    @apply visible opacity-100;
+  }
+
+  .cart-sidebar {
+    @apply invisible fixed inset-y-0 right-0 z-50 flex w-full max-w-md translate-x-full flex-col bg-white shadow-2xl duration-300;
+    transition-property: translate, visibility;
+  }
+
+  .cart-sidebar-open {
+    @apply visible translate-x-0;
+  }
+
+  .cart-sidebar-header {
+    @apply flex items-center justify-between border-b border-costa-mist/60 px-5 py-4;
+  }
+
+  .cart-sidebar-title {
+    @apply text-xl font-medium text-costa-ink;
+  }
+
+  .cart-close {
+    @apply grid size-9 place-items-center rounded-lg border border-costa-mist text-costa-deep transition-colors hover:bg-costa-mist/40;
+  }
+
+  .cart-sidebar-body {
+    @apply flex-1 space-y-3 overflow-y-auto px-5 py-4;
+  }
+
+  .cart-sidebar-footer {
+    @apply space-y-3 border-t border-costa-mist/60 bg-costa-surface px-5 py-4;
+  }
+
+  /*  Carrito: items (sidebar y página)  */
+  .cart-item {
+    @apply flex gap-3 rounded-xl border border-costa-mist bg-white p-3;
+  }
+
+  .cart-item-thumb {
+    @apply size-16 shrink-0 rounded-lg bg-costa-mist/40;
+  }
+
+  .cart-item-info {
+    @apply min-w-0 flex-1;
+  }
+
+  .cart-item-name {
+    @apply truncate text-sm font-semibold text-costa-ink;
+  }
+
+  .cart-item-meta {
+    @apply mt-0.5 text-xs text-costa-sage;
+  }
+
+  .cart-item-price {
+    @apply mt-1 text-sm font-semibold text-costa-deep;
+  }
+
+  .cart-item-actions {
+    @apply flex flex-col items-end gap-2;
+  }
+
+  .cart-item-actions .cart-item-price {
+    @apply mt-0;
+  }
+
+  .cart-row {
+    @apply flex items-center justify-between text-sm text-costa-deep;
+  }
+
+  .cart-row-strong {
+    @apply font-semibold text-costa-ink;
+  }
+
+  /*  Carrito: página completa  */
+  .cart-page-grid {
+    @apply mt-8 grid gap-6 lg:items-start;
+  }
+
+  .cart-page-main {
+    @apply min-w-0 space-y-6;
+  }
+
+  .cart-card {
+    @apply rounded-2xl border border-costa-mist bg-white p-5;
+  }
+
+  .cart-card-title {
+    @apply mb-4 text-lg font-medium text-costa-ink;
+  }
+
+  .cart-list {
+    @apply space-y-3;
+  }
+
+  .qty-stepper {
+    @apply inline-flex items-center rounded-lg border border-costa-mist;
+  }
+
+  .qty-btn {
+    @apply grid size-8 place-items-center text-costa-deep transition-colors hover:bg-costa-mist/40;
+  }
+
+  .qty-value {
+    @apply w-10 text-center text-sm font-semibold text-costa-ink;
+  }
+
+  .cart-remove {
+    @apply text-xs font-medium text-red-700 hover:underline;
+  }
+
+  /*  Carrito: despacho  */
+  .shipping-options {
+    @apply grid gap-3 sm:grid-cols-2;
+  }
+
+  .shipping-option {
+    @apply flex cursor-pointer items-start gap-3 rounded-xl border border-costa-mist bg-white p-4 transition-colors hover:bg-costa-mist/20 has-checked:border-costa-deep has-checked:bg-costa-mist/30;
+  }
+
+  .shipping-option input {
+    @apply mt-1 accent-costa-deep;
+  }
+
+  .shipping-option-title {
+    @apply block text-sm font-semibold text-costa-ink;
+  }
+
+  .shipping-option-text {
+    @apply mt-1 block text-xs text-costa-deep;
+  }
+
+  /*  Carrito: resumen  */
+  .cart-summary {
+    @apply min-w-0 space-y-4 lg:sticky lg:top-24;
+  }
+
+  .cart-summary .cart-card-title {
+    @apply mb-0;
+  }
+
+  .cart-summary-rows {
+    @apply space-y-2;
+  }
+
+  .cart-total-row {
+    @apply flex items-center justify-between border-t border-costa-mist/60 pt-3 text-base font-semibold text-costa-ink;
+  }
+
+  .cart-empty {
+    @apply py-8 text-center text-sm text-costa-sage;
+  }
+
+  .pickup-section {
+    @apply mt-5 border-t border-costa-mist/60 pt-4;
+  }
+
+  .pickup-title {
+    @apply mb-3 text-sm font-semibold text-costa-ink;
+  }
+
+  .pickup-list {
+    @apply grid gap-3 sm:grid-cols-2;
+  }
+
+  /*  Footer  */
   .newsletter-card {
     @apply grid gap-6 rounded-3xl bg-linear-to-br from-costa-deep to-costa-ink p-8 text-white shadow-xl md:grid-cols-2 md:items-center md:p-10;
   }
+
   .newsletter-badge {
     @apply inline-block rounded-full bg-white/15 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-widest text-costa-mist;
   }
+
   .newsletter-title {
     @apply mt-3 text-2xl font-medium sm:text-3xl;
   }
+
   .newsletter-text {
     @apply mt-2 text-sm text-costa-mist;
   }
+
   .newsletter-form {
     @apply flex flex-col gap-2 sm:flex-row;
   }
+
   .newsletter-input {
     @apply w-full flex-1 rounded-lg bg-white px-4 py-2.5 text-sm text-costa-ink outline-none placeholder:text-costa-sage focus:ring-2 focus:ring-costa-teal;
   }
+
   .newsletter-btn {
     @apply rounded-lg bg-costa-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black;
   }
+
   .newsletter-link {
     @apply mt-3 inline-block text-xs text-costa-mist underline-offset-2 hover:underline;
   }
@@ -153,65 +371,78 @@
   .site-footer {
     @apply mt-12 border-t border-costa-mist/60 bg-costa-mist/25;
   }
+
   .footer-grid {
     @apply grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-4;
   }
+
   .footer-title {
     @apply font-display text-base font-semibold text-costa-ink;
   }
+
   .footer-text {
     @apply mt-3 space-y-1.5 text-xs leading-relaxed text-costa-deep;
   }
+
   .footer-strong {
     @apply font-semibold text-costa-ink;
   }
+
   .footer-chip {
     @apply rounded-md bg-white px-2 py-1 text-[0.7rem] font-semibold text-costa-deep;
   }
+
   .footer-bottom {
     @apply flex flex-col gap-2 border-t border-costa-mist/60 py-5 text-xs text-costa-sage md:flex-row md:items-center md:justify-between;
   }
+
   .footer-link {
     @apply transition-colors hover:text-costa-ink;
   }
-}
 
-  /* Contacto / Mapa */
+  /*  Contacto / Mapa  */
   .contact-grid {
-    @apply mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)];
+    @apply mt-8 grid gap-6;
   }
+
   /* isolate: evita que los z-index internos de Leaflet tapen el header sticky */
   .store-map-wrapper {
     @apply isolate h-96 overflow-hidden rounded-2xl border border-costa-mist shadow-sm lg:h-[34rem];
   }
+
   .store-map {
     @apply h-full w-full;
   }
+
   .location-item {
     @apply flex w-full items-center gap-3 rounded-xl border border-costa-mist bg-white px-4 py-3 text-left text-costa-ink transition-colors hover:bg-costa-mist/30;
   }
+
   .location-item-active {
     @apply border-costa-deep bg-costa-deep text-white hover:bg-costa-deep;
   }
+
   .location-dot {
     @apply size-3 shrink-0 rounded-full;
   }
+
   .location-dot-store {
     @apply bg-costa-teal ring-2 ring-white;
   }
+
   .location-dot-pickup {
     @apply bg-costa-steel ring-2 ring-white;
   }
+
   .location-detail {
     @apply rounded-2xl border border-costa-mist bg-white p-5;
   }
-  .btn-outline {
-    @apply inline-block rounded-lg border border-costa-deep px-4 py-2 text-sm font-semibold text-costa-deep transition-colors hover:bg-costa-mist/40;
-  }
+
   .map-pin-wrapper {
     background: transparent;
     border: 0;
   }
+
   .map-pin {
     display: block;
     width: 30px;
@@ -221,6 +452,27 @@
     border: 3px solid #fff;
     box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
   }
-  .map-pin-store { background: var(--color-costa-deep); }
-  .map-pin-pickup { background: var(--color-costa-steel); }
-  .map-pin-active { outline: 3px solid var(--color-costa-teal); }
+
+  .map-pin-store {
+    background: var(--color-costa-deep);
+  }
+
+  .map-pin-pickup {
+    background: var(--color-costa-steel);
+  }
+
+  .map-pin-active {
+    outline: 3px solid var(--color-costa-teal);
+  }
+}
+
+/* Grillas con columnas personalizadas (CSS plano: @apply no acepta comas en valores arbitrarios) */
+@media (min-width: 64rem) {
+  .contact-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+
+  .cart-page-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
