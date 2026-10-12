@@ -6,6 +6,8 @@ import ContactPage from '../modules/contact/ContactPage.jsx'
 import AboutPage from '../modules/about/AboutPage.jsx'
 import CartPage from '../modules/cart/CartPage.jsx'
 import LoginPage from '../modules/auth/LoginPage.jsx'
+import RegisterPage from '../modules/auth/RegisterPage.jsx'
+import ForgotPasswordPage from '../modules/auth/ForgotPasswordPage.jsx'
 
 function ComingSoon() {
   return (
@@ -27,7 +29,9 @@ export default function AppRouter() {
         <Route path="nosotros" element={<AboutPage />} />
         <Route path="carrito" element={<CartPage />} />
         <Route path="login" element={<LoginPage />} />
-        {/* Aquí irán: catalogo, mis-pedidos, registro  */}
+        <Route path="registro" element={<RegisterPage />} />
+        <Route path="recuperar" element={<ForgotPasswordPage />} />
+        {/* Aquí irán: catalogo, mis-pedidos  */}
         <Route path="*" element={<ComingSoon />} />
       </Route>
     </Routes>
