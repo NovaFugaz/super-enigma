@@ -1,8 +1,10 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import FormField from '../../components/common/FormField.jsx'
 import PasswordField from '../../components/common/PasswordField.jsx'
 
 export default function LoginPage() {
+  const notice = useLocation().state?.message
+
   const handleSubmit = (e) => {
     e.preventDefault()
   }
@@ -16,13 +18,19 @@ export default function LoginPage() {
           Ingresa con tu correo para ver tus pedidos y comprar más rápido.
         </p>
 
+        {notice && (
+          <p className="auth-notice" role="alert">
+            {notice}
+          </p>
+        )}
+
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <FormField
             label="Correo electrónico"
             id="email"
             type="email"
             placeholder="tucorreo@ejemplo.cl"
-            autoComplete="email"/>
+            autoComplete="email" />
 
           <PasswordField id="password" autoComplete="current-password" />
 
@@ -36,9 +44,7 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          <button type="submit" className="btn-primary btn-block">
-            Iniciar sesión
-          </button>
+          <button type="submit" className="btn-primary btn-block">Iniciar sesión</button>
         </form>
 
         <p className="auth-switch">

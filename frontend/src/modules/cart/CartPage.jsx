@@ -1,13 +1,29 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import CartItem from '../../components/cart/CartItem.jsx'
+import { useCart } from '../../hooks/useCart.js'
 import { LOCATIONS } from '../../services/locations.js'
+import { CHECKOUT_LOGIN_MESSAGE } from '../../utils/cart.js'
+import { formatCLP } from '../../utils/format.js'
 
 const PICKUP_POINTS = LOCATIONS.filter((loc) => loc.type === 'pickup')
 
 export default function CartPage() {
-  // Solo estado visual de las opciones. La lógica real del carrito queda pendiente.
-  const [shipping, setShipping] = useState('domicilio')
-  const [pickupId, setPickupId] = useState(PICKUP_POINTS[0]?.id)
+  const navigate = useNavigate()
+  const { lines, totals, shipping, pickupId, setShipping, setPickupId, clearCart } = useCart()
+
+  const isEmpty = lines.length === 0
+  const selectedPickup = pickupId ?? PICKUP_POINTS[0]?.id
+
+  let shippingLabel = '—'
+  if (!isEmpty) {
+    shippingLabel =
+      shipping === 'retiro' || totals.hasFreeShipping ? 'Gratis' : formatCLP(totals.shippingCost)
+  }
+
+  const handleCheckout = () => {
+    // Cuando exista autenticación: if (isAuthenticated) return navigate('/checkout')
+    navigate('/login', { state: { from: '/carrito', message: CHECKOUT_LOGIN_MESSAGE } })
+  }
 
   return (
     <section className="page-container featured-section">
@@ -16,18 +32,26 @@ export default function CartPage() {
 
       <div className="cart-page-grid">
         <div className="cart-page-main">
-          {/* Productos */}
           <div className="cart-card">
             <h2 className="cart-card-title">Productos</h2>
 
             <div className="cart-list">
-              {/* TODO: aquí se listarán los productos del carrito
-                  (nombre, cantidad con .qty-stepper, eliminar) */}
-              <p className="cart-empty">Tu carrito está vacío.</p>
+              {isEmpty ? (
+                <p className="cart-empty">Tu carrito está vacío.</p>
+              ) : (
+                lines.map(({ product, qty }) => (
+                  <CartItem key={product.codigo} product={product} qty={qty} />
+                ))
+              )}
             </div>
+
+            {!isEmpty && (
+              <button type="button" className="btn-danger-outline mt-4" onClick={clearCart}>
+                Vaciar carrito
+              </button>
+            )}
           </div>
 
-          {/* Tipo de despacho */}
           <div className="cart-card">
             <h2 className="cart-card-title">Tipo de despacho</h2>
 
@@ -38,8 +62,7 @@ export default function CartPage() {
                   name="shipping"
                   value="domicilio"
                   checked={shipping === 'domicilio'}
-                  onChange={(e) => setShipping(e.target.value)}
-                />
+                  onChange={(e) => setShipping(e.target.value)} />
                 <span>
                   <span className="shipping-option-title">Despacho a domicilio</span>
                   <span className="shipping-option-text">
@@ -54,8 +77,7 @@ export default function CartPage() {
                   name="shipping"
                   value="retiro"
                   checked={shipping === 'retiro'}
-                  onChange={(e) => setShipping(e.target.value)}
-                />
+                  onChange={(e) => setShipping(e.target.value)} />
                 <span>
                   <span className="shipping-option-title">Retiro en punto</span>
                   <span className="shipping-option-text">
@@ -76,9 +98,8 @@ export default function CartPage() {
                         type="radio"
                         name="pickup"
                         value={point.id}
-                        checked={pickupId === point.id}
-                        onChange={(e) => setPickupId(e.target.value)}
-                      />
+                        checked={selectedPickup === point.id}
+                        onChange={(e) => setPickupId(e.target.value)} />
                       <span>
                         <span className="shipping-option-title">{point.name}</span>
                         <span className="shipping-option-text">{point.address}</span>
@@ -92,29 +113,43 @@ export default function CartPage() {
           </div>
         </div>
 
-        {/* Resumen */}
         <aside className="cart-card cart-summary">
           <h2 className="cart-card-title">Resumen</h2>
 
           <div className="cart-summary-rows">
             <div className="cart-row">
               <span>Subtotal</span>
-              <span className="cart-row-strong">$0</span>
+              <span className="cart-row-strong">{formatCLP(totals.subtotal)}</span>
             </div>
             <div className="cart-row">
-              <span>IVA (19%)</span>
-              <span className="cart-row-strong">$0</span>
+              <span>Despacho</span>
+              <span className="cart-row-strong">{shippingLabel}</span>
             </div>
+            {!totals.ivaIncluded && (
+              <div className="cart-row">
+                <span>IVA (19%)</span>
+                <span className="cart-row-strong">{formatCLP(totals.iva)}</span>
+              </div>
+            )}
             <div className="cart-total-row">
               <span>Total</span>
-              <span>$0</span>
+              <span>{formatCLP(totals.total)}</span>
             </div>
+            {totals.ivaIncluded && !isEmpty && (
+              <p className="cart-item-meta">Incluye IVA (19%): {formatCLP(totals.iva)}</p>
+            )}
+            {totals.missingForFreeShipping > 0 && (
+              <p className="cart-item-meta">
+                Te faltan {formatCLP(totals.missingForFreeShipping)} para despacho gratis.
+              </p>
+            )}
           </div>
 
-          {/* Redirige al login (aún no implementado) */}
-          <Link to="/login" className="btn-primary btn-block">
-            Pagar
-          </Link>
+          <button
+            type="button"
+            className="btn-primary btn-block disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isEmpty}
+            onClick={handleCheckout}>Pagar</button>
           <Link to="/catalogo" className="btn-outline btn-block">
             Seguir comprando
           </Link>

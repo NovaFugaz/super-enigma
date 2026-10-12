@@ -77,3 +77,6 @@ export const PRODUCTS = [
 
 export const getProductByCode = (codigo) => PRODUCTS.find((p) => p.codigo === codigo)
 export const getCategoryBySlug = (slug) => CATEGORIES.find((c) => c.slug === slug)
+
+export const FEATURED_CODES = ['GA002', 'GE001', 'TC002', 'AM002', 'MI001', 'PE006']
+export const getFeaturedProducts = () => FEATURED_CODES.map(getProductByCode).filter(Boolean)

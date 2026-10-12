@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import Navbar from "./Navbar.jsx"
 import CartSidebar from "../cart/CartSidebar.jsx"
+import { useCart } from "../../hooks/useCart.js"
 
 const iconProps = {
   width: 18,
@@ -42,9 +43,8 @@ const MenuIcon = ({ open }) => (
 
 export default function Header() {
   const [open, setOpen] = useState(false)
-  const [cartOpen, setCartOpen] = useState(false)
+  const { count, isOpen: cartOpen, openCart, closeCart } = useCart()
   const closeMenu = () => setOpen(false)
-  const closeCart = () => setCartOpen(false)
 
   return (
     <>
@@ -65,9 +65,7 @@ export default function Header() {
             <input type="search" placeholder="Buscar" aria-label="Buscar productos" />
           </label>
 
-          {/* Escritorio*/}
           <Navbar />
-
           <div className="header-actions">
             <Link to="/login" className="auth-link">
               Iniciar sesión
@@ -77,25 +75,27 @@ export default function Header() {
             </Link>
             <button
               type="button"
-              className="btn-cart"
-              aria-label="Abrir carrito"
-              onClick={() => setCartOpen(true)}
-            >
+              className="btn-cart relative"
+              aria-label={`Abrir carrito (${count} productos)`}
+              onClick={openCart}>
               <CartIcon />
+              {count > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-costa-deep px-1 text-[0.65rem] font-semibold text-white">
+                  {count}
+                </span>
+              )}
             </button>
             <button
               type="button"
               className="nav-toggle"
               aria-label="Abrir menú"
               aria-expanded={open}
-              onClick={() => setOpen((v) => !v)}
-            >
+              onClick={() => setOpen((v) => !v)}>
               <MenuIcon open={open} />
             </button>
           </div>
         </div>
 
-        {/* Para movil */}
         {open && <Navbar mobile onNavigate={closeMenu} />}
       </header>
 
