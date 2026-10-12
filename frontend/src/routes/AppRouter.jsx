@@ -8,6 +8,8 @@ import CartPage from '../modules/cart/CartPage.jsx'
 import LoginPage from '../modules/auth/LoginPage.jsx'
 import RegisterPage from '../modules/auth/RegisterPage.jsx'
 import ForgotPasswordPage from '../modules/auth/ForgotPasswordPage.jsx'
+import CatalogPage from '../modules/catalog/CatalogPage.jsx'
+import ProductDetailPage from '../modules/catalog/ProductDetailPage.jsx'
 
 function ComingSoon() {
   return (
@@ -31,6 +33,8 @@ export default function AppRouter() {
         <Route path="login" element={<LoginPage />} />
         <Route path="registro" element={<RegisterPage />} />
         <Route path="recuperar" element={<ForgotPasswordPage />} />
+        <Route path="catalogo" element={<CatalogPage />} />
+        <Route path="producto/:codigo" element={<ProductDetailPage />} />
         {/* Aquí irán: catalogo, mis-pedidos  */}
         <Route path="*" element={<ComingSoon />} />
       </Route>

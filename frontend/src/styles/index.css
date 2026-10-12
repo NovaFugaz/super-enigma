@@ -151,6 +151,191 @@
     @apply py-12 sm:py-16;
   }
 
+    /*  Catálogo: imágenes  */
+  .image-slot {
+    @apply block w-full bg-costa-mist/40 object-cover;
+  }
+
+  .image-slot-empty {
+    @apply grid place-items-center text-costa-sage;
+  }
+
+  /*  Catálogo: categorías (home)  */
+  .category-grid {
+    @apply mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5;
+  }
+
+  .category-card {
+    @apply flex flex-col overflow-hidden rounded-2xl border border-costa-mist bg-white transition hover:-translate-y-0.5 hover:border-costa-teal hover:shadow-md;
+  }
+
+  .category-card-media {
+    @apply aspect-4/3;
+  }
+
+  .category-card-body {
+    @apply p-4;
+  }
+
+  .category-card-name {
+    @apply text-base font-medium text-costa-ink;
+  }
+
+  .category-card-text {
+    @apply mt-1 text-xs leading-relaxed text-costa-sage;
+  }
+
+  /*  Catálogo: tarjeta de producto  */
+  .product-grid {
+    @apply grid grid-cols-1 gap-4 min-[30rem]:grid-cols-2 xl:grid-cols-3;
+  }
+
+  .product-card {
+    @apply flex flex-col overflow-hidden rounded-2xl border border-costa-mist bg-white transition hover:-translate-y-0.5 hover:border-costa-teal hover:shadow-md;
+  }
+
+  .product-card-media {
+    @apply aspect-square;
+  }
+
+  .product-card-body {
+    @apply flex flex-1 flex-col p-4;
+  }
+
+  .product-card-brand {
+    @apply text-xs font-semibold uppercase tracking-widest text-costa-teal;
+  }
+
+  .product-card-name {
+    @apply mt-1 text-base font-medium leading-snug text-costa-ink;
+  }
+
+  .product-card-model {
+    @apply mt-0.5 text-xs text-costa-sage;
+  }
+
+  .product-card-footer {
+    @apply mt-auto flex items-center justify-between gap-2 pt-4;
+  }
+
+  .product-card-price {
+    @apply text-base font-semibold text-costa-deep;
+  }
+
+  .stock-badge {
+    @apply rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold;
+  }
+
+  .stock-ok {
+    @apply bg-costa-teal/15 text-costa-deep;
+  }
+
+  .stock-low {
+    @apply bg-amber-100 text-amber-800;
+  }
+
+  .stock-out {
+    @apply bg-red-100 text-red-700;
+  }
+
+  /*  Catálogo: filtros y listado  */
+  .catalog-layout {
+    @apply mt-8 grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start;
+  }
+
+  .catalog-filters-wrap {
+    @apply space-y-3 lg:sticky lg:top-24;
+  }
+
+  .filters-panel {
+    @apply space-y-5 rounded-2xl border border-costa-mist bg-white p-5;
+  }
+
+  .filter-group {
+    @apply space-y-2;
+  }
+
+  .filter-title {
+    @apply mb-1 block text-sm font-semibold text-costa-ink;
+  }
+
+  .filter-option {
+    @apply flex cursor-pointer items-center gap-2 text-sm text-costa-deep;
+  }
+
+  .filter-option input {
+    @apply size-4 accent-costa-deep;
+  }
+
+  .filter-scroll {
+    @apply max-h-48 space-y-2 overflow-y-auto pr-1;
+  }
+
+  .filter-price {
+    @apply grid grid-cols-2 gap-2;
+  }
+
+  .catalog-toolbar {
+    @apply mb-4 flex flex-wrap items-center justify-between gap-3;
+  }
+
+  .catalog-sort {
+    @apply w-full sm:w-56;
+  }
+
+  /*  Detalle de producto  */
+  .breadcrumb {
+    @apply flex flex-wrap items-center gap-2 text-xs text-costa-sage;
+  }
+
+  .breadcrumb a {
+    @apply text-costa-deep hover:underline;
+  }
+
+  .detail-grid {
+    @apply mt-6 grid gap-8 md:grid-cols-2 md:items-start;
+  }
+
+  .detail-media {
+    @apply aspect-square rounded-2xl border border-costa-mist;
+  }
+
+  .detail-title {
+    @apply mt-1 text-3xl font-medium text-costa-ink;
+  }
+
+  .detail-model {
+    @apply mt-1 text-sm text-costa-sage;
+  }
+
+  .detail-price {
+    @apply mt-5 font-display text-3xl font-semibold text-costa-deep;
+  }
+
+  .detail-description {
+    @apply mt-5 text-sm leading-relaxed text-costa-deep;
+  }
+
+  .detail-actions {
+    @apply mt-6 flex flex-wrap items-center gap-3;
+  }
+
+  .spec-list {
+    @apply mt-8 divide-y divide-costa-mist/60 rounded-2xl border border-costa-mist bg-white text-sm;
+  }
+
+  .spec-row {
+    @apply flex justify-between gap-4 px-4 py-3;
+  }
+
+  .spec-row dt {
+    @apply text-costa-sage;
+  }
+
+  .spec-row dd {
+    @apply text-right font-medium text-costa-ink;
+  }
+
   /*  EmptyState  */
   .empty-state {
     @apply mt-6 rounded-2xl border border-dashed border-costa-sage/60 bg-white/60 px-6 py-16 text-center;
