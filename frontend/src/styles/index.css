@@ -335,6 +335,76 @@
     @apply grid gap-3 sm:grid-cols-2;
   }
 
+    /* Login y registro  */
+  .auth-page {
+    @apply flex justify-center py-12 sm:py-16;
+  }
+
+  .auth-card {
+    @apply w-full max-w-md rounded-2xl border border-costa-mist bg-white p-6 shadow-sm sm:p-8;
+  }
+
+  .auth-title {
+    @apply mt-1 text-3xl font-medium text-costa-ink;
+  }
+
+  .auth-subtitle {
+    @apply mt-2 text-sm text-costa-deep;
+  }
+
+  .auth-form {
+    @apply mt-6 space-y-4;
+  }
+
+  .auth-row {
+    @apply flex flex-wrap items-center justify-between gap-2;
+  }
+
+  .auth-check {
+    @apply flex cursor-pointer items-center gap-2 text-sm text-costa-deep;
+  }
+
+  .auth-check input {
+    @apply size-4 accent-costa-deep;
+  }
+
+  .auth-inline-link {
+    @apply text-sm font-medium text-costa-deep underline-offset-2 hover:text-costa-ink hover:underline;
+  }
+
+  .auth-switch {
+    @apply mt-6 border-t border-costa-mist/60 pt-5 text-center text-sm text-costa-sage;
+  }
+
+  /*  Campos de formulario */
+  .form-field {
+    @apply space-y-1.5;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-costa-ink;
+  }
+
+  .form-input {
+    @apply w-full rounded-lg border border-costa-mist bg-white px-4 py-2.5 text-sm text-costa-ink outline-none transition-colors placeholder:text-costa-sage focus:border-costa-teal focus:ring-2 focus:ring-costa-teal/30 aria-invalid:border-red-400 aria-invalid:focus:ring-red-200;
+  }
+
+  .form-hint {
+    @apply text-xs text-costa-sage;
+  }
+
+  .form-error {
+    @apply text-xs font-medium text-red-700;
+  }
+
+  .password-wrapper {
+    @apply relative;
+  }
+
+  .password-toggle {
+    @apply absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-lg text-costa-sage transition-colors hover:text-costa-deep;
+  }
+
   /*  Footer  */
   .newsletter-card {
     @apply grid gap-6 rounded-3xl bg-linear-to-br from-costa-deep to-costa-ink p-8 text-white shadow-xl md:grid-cols-2 md:items-center md:p-10;
@@ -405,7 +475,6 @@
     @apply mt-8 grid gap-6;
   }
 
-  /* isolate: evita que los z-index internos de Leaflet tapen el header sticky */
   .store-map-wrapper {
     @apply isolate h-96 overflow-hidden rounded-2xl border border-costa-mist shadow-sm lg:h-[34rem];
   }
@@ -466,7 +535,6 @@
   }
 }
 
-/* Grillas con columnas personalizadas (CSS plano: @apply no acepta comas en valores arbitrarios) */
 @media (min-width: 64rem) {
   .contact-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
