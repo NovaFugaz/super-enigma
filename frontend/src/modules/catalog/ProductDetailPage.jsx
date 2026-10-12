@@ -5,10 +5,13 @@ import ImageSlot from '../../components/common/ImageSlot.jsx'
 import ProductCard from '../../components/catalog/ProductCard.jsx'
 import StockBadge from '../../components/catalog/StockBadge.jsx'
 import { PRODUCTS, getCategoryBySlug, getProductByCode } from '../../data/catalog.js'
+import { useCart } from '../../hooks/useCart.js'
 import { formatCLP } from '../../utils/format.js'
 
 function ProductDetail({ product }) {
     const [qty, setQty] = useState(1)
+    const [notice, setNotice] = useState('')
+    const { addItem } = useCart()
     const category = getCategoryBySlug(product.categoria)
     const soldOut = product.stock === 0
 
@@ -17,6 +20,19 @@ function ProductDetail({ product }) {
     ).slice(0, 4)
 
     const handleAddToCart = () => {
+        const added = addItem(product, qty)
+
+        if (added === 0) {
+            setNotice('Ya tienes en el carrito todas las unidades disponibles.')
+            return
+        }
+
+        setNotice(
+            added < qty
+                ? `Solo se agregaron ${added}: el stock disponible es ${product.stock}.`
+                : 'Agregado al carrito.',
+        )
+        setQty(1)
     }
 
     return (
@@ -69,6 +85,10 @@ function ProductDetail({ product }) {
                             {soldOut ? 'Sin stock' : 'Agregar al carrito'}
                         </button>
                     </div>
+
+                    {notice && (
+                        <p className="form-hint mt-2" role="status">{notice}</p>
+                    )}
 
                     <dl className="spec-list">
                         <div className="spec-row">

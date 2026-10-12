@@ -1,8 +1,10 @@
-import EmptyState from '../../components/common/EmptyState.jsx'
 import CategoryCard from '../../components/catalog/CategoryCard.jsx'
-import { CATEGORIES } from '../../data/catalog.js'
+import ProductCard from '../../components/catalog/ProductCard.jsx'
+import { CATEGORIES, getFeaturedProducts } from '../../data/catalog.js'
 
 export default function HomePage() {
+  const featured = getFeaturedProducts()
+
   return (
     <>
       <section className="page-container featured-section">
@@ -20,10 +22,11 @@ export default function HomePage() {
         <p className="section-kicker">Catálogo destacado</p>
         <h2 className="section-title">Productos destacados</h2>
 
-        <EmptyState
-          title="Próximamente"
-          description="Aquí aparecerán los instrumentos destacados."
-        />
+        <div className="product-grid mt-8">
+          {featured.map((product) => (
+            <ProductCard key={product.codigo} product={product} />
+          ))}
+        </div>
       </section>
     </>
   )
