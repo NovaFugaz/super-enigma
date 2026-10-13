@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import CartItem from './CartItem.jsx'
 import { useCart } from '../../hooks/useCart.js'
 import { formatCLP } from '../../utils/format.js'
+import CartItem from './CartItem.jsx'
 
 const CloseIcon = () => (
   <svg
@@ -20,8 +20,7 @@ const CloseIcon = () => (
 )
 
 export default function CartSidebar({ open, onClose }) {
-  const { lines, totals, clearCart } = useCart()
-  const isEmpty = lines.length === 0
+  const { cartItems, subtotal, clearCart } = useCart()
 
   useEffect(() => {
     if (!open) return
@@ -48,32 +47,33 @@ export default function CartSidebar({ open, onClose }) {
         </div>
 
         <div className="cart-sidebar-body">
-          {isEmpty ? (
+          {cartItems.length === 0 ? (
             <p className="cart-empty">Tu carrito está vacío.</p>
           ) : (
-            lines.map(({ product, qty }) => (
-              <CartItem key={product.codigo} product={product} qty={qty} />
+            cartItems.map((item) => (
+              <CartItem key={item.product.codigo} item={item} />
             ))
           )}
         </div>
 
         <div className="cart-sidebar-footer">
-          {!isEmpty && (
-            <div className="cart-row">
-              <span>Subtotal</span>
-              <span className="cart-row-strong">{formatCLP(totals.subtotal)}</span>
-            </div>
+          {cartItems.length > 0 && (
+            <>
+              <div className="cart-row">
+                <span>Subtotal</span>
+                <span className="cart-row-strong">{formatCLP(subtotal)}</span>
+              </div>
+              <button type="button" className="cart-remove" onClick={clearCart}>
+                Vaciar carrito
+              </button>
+            </>
           )}
-
-          <button
-            type="button"
-            className="btn-danger-outline btn-block disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={isEmpty}
-            onClick={clearCart}
-          >Vaciar carrito</button>
 
           <Link to="/carrito" className="btn-primary btn-block" onClick={onClose}>
             Ir al carrito
+          </Link>
+          <Link to="/catalogo" className="btn-outline btn-block" onClick={onClose}>
+            Seguir comprando
           </Link>
         </div>
       </aside>

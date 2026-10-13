@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import EmptyState from '../../components/common/EmptyState.jsx'
 import ProductCard from '../../components/catalog/ProductCard.jsx'
-import { CATEGORIES, PRODUCTS } from '../../data/catalog.js'
+import { useCatalog } from '../../hooks/useCatalog.js'
 import { normalizeText } from '../../utils/format.js'
 
 const SORT_OPTIONS = [
@@ -21,6 +21,7 @@ function sortProducts(list, order) {
 }
 
 export default function CatalogPage() {
+    const { categories, products: catalogProducts, source, error } = useCatalog()
     const [params, setParams] = useSearchParams()
     const categoria = params.get('categoria') ?? ''
     const query = params.get('q') ?? ''
@@ -57,16 +58,16 @@ export default function CatalogPage() {
     }
 
     const availableBrands = useMemo(() => {
-        const inCategory = PRODUCTS.filter((p) => !categoria || p.categoria === categoria)
+        const inCategory = catalogProducts.filter((p) => !categoria || p.categoria === categoria)
         return [...new Set(inCategory.map((p) => p.marca))].sort((a, b) => a.localeCompare(b))
-    }, [categoria])
+    }, [categoria, catalogProducts])
 
-    const products = useMemo(() => {
+    const filteredProducts = useMemo(() => {
         const term = normalizeText(query.trim())
         const minValue = min === '' ? 0 : Number(min)
         const maxValue = max === '' ? Infinity : Number(max)
 
-        const filtered = PRODUCTS.filter(
+        const filtered = catalogProducts.filter(
             (p) =>
                 (!categoria || p.categoria === categoria) &&
                 (marcas.length === 0 || marcas.includes(p.marca)) &&
@@ -77,7 +78,7 @@ export default function CatalogPage() {
         )
 
         return sortProducts(filtered, orden)
-    }, [categoria, query, marcas, min, max, soloStock, orden])
+    }, [categoria, query, marcas, min, max, soloStock, orden, catalogProducts])
 
     const hasFilters = categoria || query || marcas.length > 0 || min || max || soloStock
 
@@ -85,6 +86,7 @@ export default function CatalogPage() {
         <section className="page-container featured-section">
             <p className="section-kicker">Sonido Vivo</p>
             <h1 className="section-title">Catálogo</h1>
+            {error && <p className="form-hint" role="status">No se pudo leer catalogo.xlsx ({error}); se usa el catálogo de respaldo.</p>}
 
             <div className="catalog-layout">
                 <aside className="catalog-filters-wrap">
@@ -118,7 +120,7 @@ export default function CatalogPage() {
                                     name="categoria"
                                     checked={categoria === ''}
                                     onChange={() => changeCategory('')}/>Todas</label>
-                            {CATEGORIES.map((c) => (
+                            {categories.map((c) => (
                                 <label key={c.slug} className="filter-option">
                                     <input
                                         type="radio"
@@ -189,7 +191,10 @@ export default function CatalogPage() {
                 <div className="min-w-0">
                     <div className="catalog-toolbar">
                         <p className="text-sm text-costa-deep">
-                            {products.length} {products.length === 1 ? 'producto' : 'productos'}
+                            {filteredProducts.length} {filteredProducts.length === 1 ? 'producto' : 'productos'}
+                            <span className="ml-2 text-xs text-costa-sage">
+                                {source === 'xlsx' ? 'Desde catálogo Excel' : 'Catálogo de respaldo'}
+                            </span>
                         </p>
 
                         <label className="catalog-sort">
@@ -207,13 +212,13 @@ export default function CatalogPage() {
                         </label>
                     </div>
 
-                    {products.length === 0 ? (
+                    {filteredProducts.length === 0 ? (
                         <EmptyState
                             title="Sin resultados"
                             description="Prueba con otros filtros o limpia la búsqueda."/>
                     ) : (
                         <div className="product-grid">
-                            {products.map((product) => (
+                            {filteredProducts.map((product) => (
                                 <ProductCard key={product.codigo} product={product} />
                             ))}
                         </div>

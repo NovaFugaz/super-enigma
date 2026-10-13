@@ -2,7 +2,11 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import Navbar from "./Navbar.jsx"
 import CartSidebar from "../cart/CartSidebar.jsx"
-import { useCart } from "../../hooks/useCart.js"
+import { useCart } from '../../hooks/useCart.js'
+import { useAuth } from '../../hooks/useAuth.js'
+import { USER_ROLES } from '../../services/mockAuth.js'
+
+const ROLE_LABELS = { customer: 'Cliente', seller: 'Vendedor', admin: 'Admin' }
 
 const iconProps = {
   width: 18,
@@ -43,7 +47,9 @@ const MenuIcon = ({ open }) => (
 
 export default function Header() {
   const [open, setOpen] = useState(false)
-  const { count, isOpen: cartOpen, openCart, closeCart } = useCart()
+  const [cartOpen, setCartOpen] = useState(false)
+  const { itemCount } = useCart()
+  const { user, logout } = useAuth()
   const closeMenu = () => setOpen(false)
 
   return (
@@ -65,25 +71,31 @@ export default function Header() {
             <input type="search" placeholder="Buscar" aria-label="Buscar productos" />
           </label>
 
-          <Navbar />
+          {/* Escritorio*/}
+          <Navbar user={user} />
+
           <div className="header-actions">
-            <Link to="/login" className="auth-link">
-              Iniciar sesión
-            </Link>
-            <Link to="/registro" className="auth-register">
-              Registrarse
-            </Link>
+            {user ? (
+              <>
+                <span className="auth-link">
+                  Hola, {user.name.split(' ')[0]} · {USER_ROLES.includes(user.role) ? ROLE_LABELS[user.role] : 'Cliente'}
+                </span>
+                <button type="button" className="auth-register" onClick={logout}>Cerrar sesión</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="auth-link">Iniciar sesión</Link>
+                <Link to="/registro" className="auth-register">Registrarse</Link>
+              </>
+            )}
             <button
               type="button"
-              className="btn-cart relative"
-              aria-label={`Abrir carrito (${count} productos)`}
-              onClick={openCart}>
+              className="btn-cart"
+              aria-label={`Abrir carrito${itemCount ? `, ${itemCount} productos` : ''}`}
+              onClick={() => setCartOpen(true)}
+            >
               <CartIcon />
-              {count > 0 && (
-                <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-costa-deep px-1 text-[0.65rem] font-semibold text-white">
-                  {count}
-                </span>
-              )}
+              {itemCount > 0 && <span className="cart-count" aria-hidden="true">{itemCount}</span>}
             </button>
             <button
               type="button"
@@ -96,7 +108,8 @@ export default function Header() {
           </div>
         </div>
 
-        {open && <Navbar mobile onNavigate={closeMenu} />}
+        {/* Para movil */}
+        {open && <Navbar mobile onNavigate={closeMenu} user={user} onLogout={logout} />}
       </header>
 
       <CartSidebar open={cartOpen} onClose={closeCart} />

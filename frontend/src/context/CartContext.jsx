@@ -1,101 +1,145 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
-import { getProductByCode } from '../data/catalog.js'
-import { CART_STORAGE_KEY, calcTotals, loadCart, saveCart } from '../utils/cart.js'
+import { useEffect, useState } from 'react'
+import { CartContext } from './cart-context.js'
+import { useCatalog } from '../hooks/useCatalog.js'
+import { savePaidOrder } from '../services/mockOrders.js'
 
-export const CartContext = createContext(null)
+const CART_STORAGE_KEY = 'sonido-vivo-cart'
+
+function readCart() {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(CART_STORAGE_KEY) ?? '[]')
+    if (!Array.isArray(saved)) return []
+
+    return saved.filter(
+      (item) =>
+        typeof item.productCode === 'string' &&
+        Number.isInteger(item.quantity) &&
+        item.quantity > 0,
+    )
+  } catch {
+    return []
+  }
+}
 
 export function CartProvider({ children }) {
-    const [cart, setCart] = useState(loadCart)
-    const [isOpen, setIsOpen] = useState(false)
+  const { products, applyNewStock } = useCatalog()
+  const [items, setItems] = useState(readCart)
 
-    useEffect(() => {
-        saveCart(cart)
-    }, [cart])
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items))
+    } catch {
+      // The cart remains usable when browser storage is unavailable.
+    }
+  }, [items])
 
-    useEffect(() => {
-        const onStorage = (e) => {
-            if (e.key === CART_STORAGE_KEY || e.key === null) setCart(loadCart())
-        }
-        window.addEventListener('storage', onStorage)
-        return () => window.removeEventListener('storage', onStorage)
-    }, [])
+  const cartItems = items.flatMap((item) => {
+    const product = products.find((entry) => entry.codigo === item.productCode)
+    if (!product || product.stock < 1) return []
 
-    const lines = useMemo(
-        () =>
-            cart.items.flatMap(({ codigo, qty }) => {
-                const product = getProductByCode(codigo)
-                if (!product || product.stock === 0) return []
-                return [{ product, qty: Math.min(qty, product.stock) }]
-            }),
-        [cart.items],
+    const quantity = Math.min(item.quantity, product.stock)
+    return [{ product, quantity, lineTotal: product.precio * quantity }]
+  })
+
+  const subtotal = cartItems.reduce((sum, item) => sum + item.lineTotal, 0)
+  const tax = Math.round(subtotal * 0.19)
+  const total = subtotal + tax
+  const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+
+  const addItem = (product, quantity = 1) => {
+    if (!product || product.stock < 1) return
+    const amount = Math.max(1, Math.floor(Number(quantity) || 1))
+
+    setItems((current) => {
+      const existing = current.find((item) => item.productCode === product.codigo)
+      if (!existing) {
+        return [...current, { productCode: product.codigo, quantity: Math.min(amount, product.stock) }]
+      }
+
+      return current.map((item) =>
+        item.productCode === product.codigo
+          ? { ...item, quantity: Math.min(item.quantity + amount, product.stock) }
+          : item,
+      )
+    })
+  }
+
+  const setQuantity = (productCode, quantity) => {
+    const product = products.find((entry) => entry.codigo === productCode)
+    if (!product || product.stock < 1) return
+
+    const nextQuantity = Math.max(1, Math.min(product.stock, Math.floor(Number(quantity) || 1)))
+    setItems((current) =>
+      current.map((item) =>
+        item.productCode === productCode ? { ...item, quantity: nextQuantity } : item,
+      ),
     )
+  }
 
-    const count = useMemo(() => lines.reduce((sum, l) => sum + l.qty, 0), [lines])
-    const totals = useMemo(() => calcTotals(lines, cart.shipping), [lines, cart.shipping])
+  const removeItem = (productCode) => {
+    setItems((current) => current.filter((item) => item.productCode !== productCode))
+  }
 
-    const addItem = useCallback(
-        (product, qty = 1) => {
-            const current = cart.items.find((i) => i.codigo === product.codigo)?.qty ?? 0
-            const next = Math.min(current + qty, product.stock)
-            if (next <= current) return 0
+  const clearCart = () => setItems([])
 
-            setCart((prev) => {
-                const inCart = prev.items.find((i) => i.codigo === product.codigo)
-                const target = Math.min((inCart?.qty ?? 0) + qty, product.stock)
-                const items = inCart
-                    ? prev.items.map((i) => (i.codigo === product.codigo ? { ...i, qty: target } : i))
-                    : [...prev.items, { codigo: product.codigo, qty: target }]
-                return { ...prev, items }
-            })
-            return next - current
-        },
-        [cart.items],
-    )
+  const createOrder = ({ shipping, customer, payment }) => {
+    if (cartItems.length === 0) return { error: 'El carrito está vacío.' }
+    if (!customer || customer.role !== 'customer') return { error: 'Inicia sesión con una cuenta de cliente para comprar.' }
+    if (!payment?.approved) return { error: 'El pago no fue aprobado.' }
 
-    const setQuantity = useCallback((codigo, qty) => {
-        const product = getProductByCode(codigo)
-        setCart((prev) => {
-            if (!product || qty < 1) {
-                return { ...prev, items: prev.items.filter((i) => i.codigo !== codigo) }
-            }
-            const target = Math.min(qty, product.stock)
-            return {
-                ...prev,
-                items: prev.items.map((i) => (i.codigo === codigo ? { ...i, qty: target } : i)),
-            }
-        })
-    }, [])
-
-    const removeItem = useCallback((codigo) => {
-        setCart((prev) => ({ ...prev, items: prev.items.filter((i) => i.codigo !== codigo) }))
-    }, [])
-
-    const clearCart = useCallback(() => {
-        setCart((prev) => ({ ...prev, items: [] }))
-    }, [])
-
-    const setShipping = useCallback((shipping) => setCart((prev) => ({ ...prev, shipping })), [])
-    const setPickupId = useCallback((pickupId) => setCart((prev) => ({ ...prev, pickupId })), [])
-
-    const openCart = useCallback(() => setIsOpen(true), [])
-    const closeCart = useCallback(() => setIsOpen(false), [])
-
-    const value = {
-        lines,
-        count,
-        totals,
-        shipping: cart.shipping,
-        pickupId: cart.pickupId,
-        isOpen,
-        openCart,
-        closeCart,
-        addItem,
-        setQuantity,
-        removeItem,
-        clearCart,
-        setShipping,
-        setPickupId,
+    const createdAt = new Date().toISOString()
+    const orderId = `SV-${Date.now()}`
+    const order = {
+      id: orderId,
+      createdAt,
+      customerId: customer.id,
+      customerName: customer.name,
+      customerEmail: customer.email,
+      status: 'en_proceso',
+      trackingNumber: `TRK-${orderId.slice(3)}`,
+      statusHistory: [
+        { status: 'pendiente', createdAt },
+        { status: 'en_proceso', createdAt },
+      ],
+      payment: {
+        method: 'tarjeta_simulada',
+        status: payment.status,
+        transactionId: payment.transactionId,
+        authorizationCode: payment.authorizationCode,
+      },
+      receipt: {
+        number: `BOL-${orderId}`,
+        type: 'Boleta electrónica simulada',
+        issuedAt: createdAt,
+      },
+      shipping,
+      items: cartItems.map(({ product, quantity, lineTotal }) => ({
+        code: product.codigo,
+        name: product.nombre,
+        brand: product.marca,
+        model: product.modelo,
+        unitPrice: product.precio,
+        quantity,
+        lineTotal,
+      })),
+      subtotal,
+      tax,
+      total,
     }
 
-    return <CartContext.Provider value={value}>{children}</CartContext.Provider>
+    const result = savePaidOrder(order, products)
+    if (result.error) return result
+
+    applyNewStock(result.stockOverrides)
+    clearCart()
+    return { order: result.order }
+  }
+
+  return (
+    <CartContext.Provider
+      value={{ cartItems, itemCount, subtotal, tax, total, addItem, setQuantity, removeItem, clearCart, createOrder }}
+    >
+      {children}
+    </CartContext.Provider>
+  )
 }

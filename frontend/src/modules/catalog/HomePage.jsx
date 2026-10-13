@@ -1,9 +1,8 @@
 import CategoryCard from '../../components/catalog/CategoryCard.jsx'
-import ProductCard from '../../components/catalog/ProductCard.jsx'
-import { CATEGORIES, getFeaturedProducts } from '../../data/catalog.js'
+import { useCatalog } from '../../hooks/useCatalog.js'
 
 export default function HomePage() {
-  const featured = getFeaturedProducts()
+  const { categories } = useCatalog()
 
   return (
     <>
@@ -12,7 +11,7 @@ export default function HomePage() {
         <h2 className="section-title">Explorar por categoría</h2>
 
         <div className="category-grid">
-          {CATEGORIES.map((category) => (
+          {categories.map((category) => (
             <CategoryCard key={category.slug} category={category} />
           ))}
         </div>

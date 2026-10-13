@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import MainLayout from '../components/layout/MainLayout.jsx'
 import EmptyState from '../components/common/EmptyState.jsx'
@@ -10,6 +11,13 @@ import RegisterPage from '../modules/auth/RegisterPage.jsx'
 import ForgotPasswordPage from '../modules/auth/ForgotPasswordPage.jsx'
 import CatalogPage from '../modules/catalog/CatalogPage.jsx'
 import ProductDetailPage from '../modules/catalog/ProductDetailPage.jsx'
+import ProtectedRoute from './ProtectedRoute.jsx'
+import AccessDeniedPage from '../modules/auth/AccessDeniedPage.jsx'
+import OrdersPage from '../modules/cart/OrdersPage.jsx'
+import OrderTrackingPage from '../modules/cart/OrderTrackingPage.jsx'
+
+const SellerPanelPage = lazy(() => import('../modules/seller/SellerPanelPage.jsx'))
+const AdminPanelPage = lazy(() => import('../modules/admin/AdminPanelPage.jsx'))
 
 function ComingSoon() {
   return (
@@ -33,9 +41,33 @@ export default function AppRouter() {
         <Route path="login" element={<LoginPage />} />
         <Route path="registro" element={<RegisterPage />} />
         <Route path="recuperar" element={<ForgotPasswordPage />} />
+        <Route path="403" element={<AccessDeniedPage />} />
         <Route path="catalogo" element={<CatalogPage />} />
         <Route path="producto/:codigo" element={<ProductDetailPage />} />
-        {/* Aquí irán: catalogo, mis-pedidos  */}
+        <Route path="seguimiento" element={<OrderTrackingPage />} />
+        <Route element={<ProtectedRoute allowedRoles={['customer']} />}>
+          <Route path="pedidos" element={<OrdersPage />} />
+        </Route>
+        <Route element={<ProtectedRoute allowedRoles={['seller']} />}>
+          <Route
+            path="vendedor"
+            element={(
+              <Suspense fallback={<div className="page-container py-16" role="status">Cargando panel…</div>}>
+                <SellerPanelPage />
+              </Suspense>
+            )}
+          />
+        </Route>
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route
+            path="administracion"
+            element={(
+              <Suspense fallback={<div className="page-container py-16" role="status">Cargando panel…</div>}>
+                <AdminPanelPage />
+              </Suspense>
+            )}
+          />
+        </Route>
         <Route path="*" element={<ComingSoon />} />
       </Route>
     </Routes>

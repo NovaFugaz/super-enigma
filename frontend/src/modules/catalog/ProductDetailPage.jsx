@@ -4,35 +4,24 @@ import EmptyState from '../../components/common/EmptyState.jsx'
 import ImageSlot from '../../components/common/ImageSlot.jsx'
 import ProductCard from '../../components/catalog/ProductCard.jsx'
 import StockBadge from '../../components/catalog/StockBadge.jsx'
-import { PRODUCTS, getCategoryBySlug, getProductByCode } from '../../data/catalog.js'
-import { useCart } from '../../hooks/useCart.js'
+import { useCatalog } from '../../hooks/useCatalog.js'
 import { formatCLP } from '../../utils/format.js'
+import { useCart } from '../../hooks/useCart.js'
 
-function ProductDetail({ product }) {
+function ProductDetail({ product, products, categories }) {
     const [qty, setQty] = useState(1)
-    const [notice, setNotice] = useState('')
+    const [addedQuantity, setAddedQuantity] = useState(0)
     const { addItem } = useCart()
-    const category = getCategoryBySlug(product.categoria)
+    const category = categories.find((item) => item.slug === product.categoria)
     const soldOut = product.stock === 0
 
-    const related = PRODUCTS.filter(
+    const related = products.filter(
         (p) => p.categoria === product.categoria && p.codigo !== product.codigo,
     ).slice(0, 4)
 
     const handleAddToCart = () => {
-        const added = addItem(product, qty)
-
-        if (added === 0) {
-            setNotice('Ya tienes en el carrito todas las unidades disponibles.')
-            return
-        }
-
-        setNotice(
-            added < qty
-                ? `Solo se agregaron ${added}: el stock disponible es ${product.stock}.`
-                : 'Agregado al carrito.',
-        )
-        setQty(1)
+        addItem(product, qty)
+        setAddedQuantity(qty)
     }
 
     return (
@@ -85,6 +74,12 @@ function ProductDetail({ product }) {
                             {soldOut ? 'Sin stock' : 'Agregar al carrito'}
                         </button>
                     </div>
+                    {addedQuantity > 0 && (
+                        <p className="mt-3 text-sm text-costa-deep" role="status" aria-live="polite">
+                            {addedQuantity} {addedQuantity === 1 ? 'unidad agregada' : 'unidades agregadas'}.{' '}
+                            <Link to="/carrito" className="font-semibold underline">Ver carrito</Link>
+                        </p>
+                    )}
 
                     {notice && (
                         <p className="form-hint mt-2" role="status">{notice}</p>
@@ -131,7 +126,8 @@ function ProductDetail({ product }) {
 
 export default function ProductDetailPage() {
     const { codigo } = useParams()
-    const product = getProductByCode(codigo)
+    const { products, categories } = useCatalog()
+    const product = products.find((item) => item.codigo === codigo)
 
     if (!product) {
         return (
@@ -146,5 +142,5 @@ export default function ProductDetailPage() {
         )
     }
 
-    return <ProductDetail key={product.codigo} product={product} />
+    return <ProductDetail key={product.codigo} product={product} products={products} categories={categories} />
 }

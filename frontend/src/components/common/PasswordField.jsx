@@ -33,8 +33,13 @@ export default function PasswordField({
   autoComplete = 'current-password',
   error,
   hint,
+  value,
+  onChange,
+  required = false,
+  minLength,
 }) {
   const [visible, setVisible] = useState(false)
+  const descriptionId = error ? `${id}-error` : hint ? `${id}-hint` : undefined
 
   return (
     <div className="form-field">
@@ -48,8 +53,12 @@ export default function PasswordField({
           type={visible ? 'text' : 'password'}
           placeholder={placeholder}
           autoComplete={autoComplete}
+          value={value}
+          onChange={onChange}
+          required={required}
+          minLength={minLength}
           aria-invalid={error ? 'true' : undefined}
-          aria-describedby={error ? `${id}-error` : undefined}
+          aria-describedby={descriptionId}
           className="form-input pr-11"
         />
         <button
@@ -61,7 +70,7 @@ export default function PasswordField({
           {visible ? <EyeOffIcon /> : <EyeIcon />}
         </button>
       </div>
-      {hint && !error && <p className="form-hint">{hint}</p>}
+      {hint && !error && <p id={`${id}-hint`} className="form-hint">{hint}</p>}
       {error && (
         <p id={`${id}-error`} className="form-error">
           {error}
