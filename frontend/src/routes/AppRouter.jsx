@@ -13,11 +13,11 @@ import CatalogPage from '../modules/catalog/CatalogPage.jsx'
 import ProductDetailPage from '../modules/catalog/ProductDetailPage.jsx'
 import ProtectedRoute from './ProtectedRoute.jsx'
 import AccessDeniedPage from '../modules/auth/AccessDeniedPage.jsx'
-import RoleHomePage from '../modules/auth/RoleHomePage.jsx'
 import OrdersPage from '../modules/cart/OrdersPage.jsx'
 import OrderTrackingPage from '../modules/cart/OrderTrackingPage.jsx'
 
 const SellerPanelPage = lazy(() => import('../modules/seller/SellerPanelPage.jsx'))
+const AdminPanelPage = lazy(() => import('../modules/admin/AdminPanelPage.jsx'))
 
 function ComingSoon() {
   return (
@@ -59,7 +59,14 @@ export default function AppRouter() {
           />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-          <Route path="administracion" element={<RoleHomePage role="admin" />} />
+          <Route
+            path="administracion"
+            element={(
+              <Suspense fallback={<div className="page-container py-16" role="status">Cargando panel…</div>}>
+                <AdminPanelPage />
+              </Suspense>
+            )}
+          />
         </Route>
         <Route path="*" element={<ComingSoon />} />
       </Route>

@@ -38,6 +38,7 @@ function toProfile(user) {
     phone: user.phone,
     email: user.email,
     role: USER_ROLES.includes(user.role) ? user.role : 'customer',
+    active: user.active !== false,
   }
 }
 
@@ -73,6 +74,7 @@ export function seedDemoAccounts() {
               phone: demo.phone,
               email: demo.email,
               role: demo.role,
+              active: true,
               salt,
               passwordHash,
             }
@@ -111,6 +113,7 @@ export async function registerAccount({ name, phone, email, password }) {
     phone: phone.trim(),
     email: normalizedEmail,
     role: 'customer',
+    active: true,
     salt,
     passwordHash,
   }
@@ -128,7 +131,7 @@ export async function authenticateAccount(email, password) {
     (account) => account.email === normalizedEmail,
   )
 
-  if (!user?.salt || !user.passwordHash) return null
+  if (!user?.salt || !user.passwordHash || user.active === false) return null
   try {
     const passwordHash = await hashPassword(password, user.salt)
     return passwordHash === user.passwordHash ? toProfile(user) : null
@@ -161,4 +164,64 @@ export async function resetAccountPassword(email, password) {
     userIndex === index ? { ...user, salt, passwordHash } : user,
   )
   return writeUsers(updatedUsers)
+}
+
+export function listManagedUsers() {
+  return readUsers().map(toProfile)
+}
+
+export async function createManagedUser({ name, phone = '', email, password, role }) {
+  const normalizedEmail = normalizeEmail(email)
+  if (readUsers().some((user) => user.email === normalizedEmail)) {
+    return { error: 'Ya existe una cuenta con ese correo.' }
+  }
+  if (!USER_ROLES.includes(role)) return { error: 'El rol seleccionado no es válido.' }
+
+  let salt
+  let passwordHash
+  try {
+    salt = createSalt()
+    passwordHash = await hashPassword(password, salt)
+  } catch {
+    return { error: 'Este navegador no permite crear credenciales locales.' }
+  }
+
+  const user = {
+    id: `user-${Date.now()}`,
+    name: name.trim(),
+    phone: phone.trim(),
+    email: normalizedEmail,
+    role,
+    active: true,
+    salt,
+    passwordHash,
+  }
+  if (!writeUsers([...readUsers(), user])) return { error: 'No se pudo guardar el usuario.' }
+  return { user: toProfile(user) }
+}
+
+export function updateManagedUser(userId, changes) {
+  const users = readUsers()
+  const userIndex = users.findIndex((user) => user.id === userId)
+  if (userIndex < 0) return { error: 'No se encontró el usuario.' }
+
+  const current = users[userIndex]
+  const email = normalizeEmail(changes.email ?? current.email)
+  const role = changes.role ?? current.role
+  if (!USER_ROLES.includes(role)) return { error: 'El rol seleccionado no es válido.' }
+  if (users.some((user, index) => index !== userIndex && user.email === email)) {
+    return { error: 'Ya existe una cuenta con ese correo.' }
+  }
+
+  const updatedUser = {
+    ...current,
+    name: (changes.name ?? current.name).trim(),
+    phone: (changes.phone ?? current.phone).trim(),
+    email,
+    role,
+    active: changes.active === undefined ? current.active !== false : Boolean(changes.active),
+  }
+  const updatedUsers = users.map((user, index) => index === userIndex ? updatedUser : user)
+  if (!writeUsers(updatedUsers)) return { error: 'No se pudo actualizar el usuario.' }
+  return { user: toProfile(updatedUser) }
 }

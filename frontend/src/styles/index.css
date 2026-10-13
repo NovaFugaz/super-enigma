@@ -695,6 +695,103 @@
     @apply text-xs text-costa-sage;
   }
 
+  .admin-tabs {
+    @apply flex gap-1 overflow-x-auto border-b border-costa-mist;
+  }
+
+  .admin-section {
+    @apply mt-5 min-w-0;
+  }
+
+  .admin-dashboard-toolbar {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between;
+  }
+
+  .admin-period-control {
+    @apply sm:max-w-64;
+  }
+
+  .admin-dashboard-grid {
+    @apply grid gap-4 xl:grid-cols-2;
+  }
+
+  .admin-panel {
+    @apply min-w-0 rounded-lg border border-costa-mist bg-white p-4 sm:p-5;
+  }
+
+  .admin-panel-title {
+    @apply mb-4 text-base font-semibold text-costa-ink;
+  }
+
+  .admin-sales-chart {
+    @apply flex h-52 items-end gap-2 overflow-x-auto border-b border-costa-mist pb-2;
+  }
+
+  .admin-sales-column {
+    @apply flex h-full min-w-8 flex-1 flex-col items-center justify-end gap-2;
+  }
+
+  .admin-sales-bar {
+    @apply block w-full max-w-10 rounded-t bg-costa-teal/80;
+  }
+
+  .admin-sales-date {
+    @apply max-w-14 truncate text-[0.65rem] text-costa-sage;
+  }
+
+  .admin-top-products {
+    @apply divide-y divide-costa-mist;
+  }
+
+  .admin-top-products li {
+    @apply flex items-center justify-between gap-3 py-3 text-sm text-costa-deep;
+  }
+
+  .admin-top-products small {
+    @apply mt-0.5 block text-xs text-costa-sage;
+  }
+
+  .admin-management-grid {
+    @apply grid items-start gap-4;
+  }
+
+  .admin-form {
+    @apply space-y-3;
+  }
+
+  .admin-user-list-panel,
+  .admin-product-list-panel {
+    @apply min-w-0;
+  }
+
+  .admin-inline-filters {
+    @apply mb-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto];
+  }
+
+  .admin-list-table-wrap {
+    @apply overflow-x-auto;
+  }
+
+  .admin-row-actions {
+    @apply flex flex-wrap gap-x-3 gap-y-1;
+  }
+
+  .admin-row-actions button:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+
+  .admin-inventory-toolbar {
+    @apply grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_12rem_auto];
+  }
+
+  .admin-inventory-count {
+    @apply pb-2 text-sm font-medium text-costa-deep;
+  }
+
+  .admin-inventory-panel {
+    @apply mt-4;
+  }
+
   .pickup-section {
     @apply mt-5 border-t border-costa-mist/60 pt-4;
   }
@@ -914,6 +1011,10 @@
 
   .cart-page-grid {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+
+  .admin-management-grid {
+    grid-template-columns: minmax(18rem, 0.75fr) minmax(0, 1.25fr);
   }
 
   .seller-orders-layout {
