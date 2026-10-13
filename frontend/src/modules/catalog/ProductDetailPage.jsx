@@ -81,10 +81,6 @@ function ProductDetail({ product, products, categories }) {
                         </p>
                     )}
 
-                    {notice && (
-                        <p className="form-hint mt-2" role="status">{notice}</p>
-                    )}
-
                     <dl className="spec-list">
                         <div className="spec-row">
                             <dt>Código</dt>

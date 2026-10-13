@@ -126,4 +126,18 @@ describe('mock order data', () => {
     expect(result.error).toMatch(/No se puede cambiar/)
     expect(JSON.parse(window.localStorage.getItem('sonido-vivo-orders'))[0].status).toBe('pendiente')
   })
+
+  it('rejects invalid statuses and resolves tracking references case-insensitively', async () => {
+    const { findOrder, seedDemoOrders, updateOrderStatus } = await import('../services/mockOrders.js')
+    seedDemoOrders()
+
+    const invalid = updateOrderStatus('SV-DEMO-1001', 'estado_invalido')
+    expect(invalid.error).toMatch(/Estado de pedido no válido/)
+
+    const byTracking = findOrder('  TRK-DEMO-1001  ')
+    expect(byTracking).toMatchObject({ id: 'SV-DEMO-1001', trackingNumber: 'TRK-DEMO-1001' })
+
+    const unchanged = updateOrderStatus('SV-DEMO-1001', 'pendiente')
+    expect(unchanged.changed).toBe(false)
+  })
 })
