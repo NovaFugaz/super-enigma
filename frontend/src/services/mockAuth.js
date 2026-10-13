@@ -1,4 +1,13 @@
 const USERS_KEY = 'sonido-vivo-users'
+export const USER_ROLES = ['customer', 'seller', 'admin']
+
+const DEMO_ACCOUNTS = [
+  { name: 'Cliente Demo', phone: '+56 9 1111 1111', email: 'cliente@sonidovivo.cl', password: 'Cliente123!', role: 'customer' },
+  { name: 'Vendedor Demo', phone: '+56 9 2222 2222', email: 'vendedor@sonidovivo.cl', password: 'Vendedor123!', role: 'seller' },
+  { name: 'Administrador Demo', phone: '+56 9 3333 3333', email: 'admin@sonidovivo.cl', password: 'Admin123!', role: 'admin' },
+]
+
+let demoSeedPromise
 
 function normalizeEmail(email) {
   return email.trim().toLowerCase()
@@ -23,7 +32,13 @@ function writeUsers(users) {
 }
 
 function toProfile(user) {
-  return { id: user.id, name: user.name, phone: user.phone, email: user.email }
+  return {
+    id: user.id,
+    name: user.name,
+    phone: user.phone,
+    email: user.email,
+    role: USER_ROLES.includes(user.role) ? user.role : 'customer',
+  }
 }
 
 function createSalt() {
@@ -35,6 +50,42 @@ async function hashPassword(password, salt) {
   const input = new TextEncoder().encode(`${salt}:${password}`)
   const digest = await window.crypto.subtle.digest('SHA-256', input)
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+export function seedDemoAccounts() {
+  if (!demoSeedPromise) {
+    demoSeedPromise = (async () => {
+      const users = readUsers()
+      const missingAccounts = DEMO_ACCOUNTS.filter(
+        (demo) => !users.some((user) => user.email === demo.email),
+      )
+
+      if (missingAccounts.length === 0) return true
+
+      try {
+        const seededAccounts = await Promise.all(
+          missingAccounts.map(async (demo) => {
+            const salt = createSalt()
+            const passwordHash = await hashPassword(demo.password, salt)
+            return {
+              id: `demo-${demo.role}`,
+              name: demo.name,
+              phone: demo.phone,
+              email: demo.email,
+              role: demo.role,
+              salt,
+              passwordHash,
+            }
+          }),
+        )
+        return writeUsers([...users, ...seededAccounts])
+      } catch {
+        return false
+      }
+    })()
+  }
+
+  return demoSeedPromise
 }
 
 export async function registerAccount({ name, phone, email, password }) {
@@ -59,6 +110,7 @@ export async function registerAccount({ name, phone, email, password }) {
     name: name.trim(),
     phone: phone.trim(),
     email: normalizedEmail,
+    role: 'customer',
     salt,
     passwordHash,
   }

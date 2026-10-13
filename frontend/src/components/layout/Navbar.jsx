@@ -3,12 +3,19 @@ import { NavLink } from "react-router-dom"
 const NAV_ITEMS = [
   { to: '/', label: 'Inicio', end: true },
   { to: '/catalogo', label: 'Catálogo' },
-  { to: '/pedidos', label: 'Pedidos' },
   { to: '/nosotros', label: 'Nosotros' },
   { to: '/contacto', label: 'Contacto' },
 ]
 
 export default function Navbar({ mobile = false, onNavigate, user, onLogout }) {
+  const roleHome = user?.role === 'seller'
+    ? { to: '/vendedor', label: 'Panel vendedor' }
+    : user?.role === 'admin'
+      ? { to: '/administracion', label: 'Administración' }
+      : user?.role === 'customer'
+        ? { to: '/pedidos', label: 'Pedidos' }
+        : null
+
   return (
     <nav
       className={mobile ? 'nav-mobile' : 'nav-desktop'}
@@ -25,6 +32,12 @@ export default function Navbar({ mobile = false, onNavigate, user, onLogout }) {
           {item.label}
         </NavLink>
       ))}
+
+      {roleHome && (
+        <NavLink to={roleHome.to} className="nav-link" onClick={onNavigate}>
+          {roleHome.label}
+        </NavLink>
+      )}
 
       {mobile && (
         <>

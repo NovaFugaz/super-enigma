@@ -4,6 +4,9 @@ import Navbar from "./Navbar.jsx"
 import CartSidebar from "../cart/CartSidebar.jsx"
 import { useCart } from '../../hooks/useCart.js'
 import { useAuth } from '../../hooks/useAuth.js'
+import { USER_ROLES } from '../../services/mockAuth.js'
+
+const ROLE_LABELS = { customer: 'Cliente', seller: 'Vendedor', admin: 'Admin' }
 
 const iconProps = {
   width: 18,
@@ -70,12 +73,14 @@ export default function Header() {
           </label>
 
           {/* Escritorio*/}
-          <Navbar />
+          <Navbar user={user} />
 
           <div className="header-actions">
             {user ? (
               <>
-                <span className="auth-link">Hola, {user.name.split(' ')[0]}</span>
+                <span className="auth-link">
+                  Hola, {user.name.split(' ')[0]} · {USER_ROLES.includes(user.role) ? ROLE_LABELS[user.role] : 'Cliente'}
+                </span>
                 <button type="button" className="auth-register" onClick={logout}>Cerrar sesión</button>
               </>
             ) : (

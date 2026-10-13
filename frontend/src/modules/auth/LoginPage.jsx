@@ -1,13 +1,20 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import FormField from '../../components/common/FormField.jsx'
 import PasswordField from '../../components/common/PasswordField.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
 import { authenticateAccount } from '../../services/mockAuth.js'
 
+const ROLE_HOME = {
+  customer: '/pedidos',
+  seller: '/vendedor',
+  admin: '/administracion',
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
   const [values, setValues] = useState({ email: '', password: '' })
   const [remember, setRemember] = useState(false)
@@ -32,7 +39,8 @@ export default function LoginPage() {
     }
 
     login(profile, remember)
-    navigate('/', { replace: true })
+    const destination = location.state?.from?.pathname ?? ROLE_HOME[profile.role] ?? '/'
+    navigate(destination, { replace: true })
   }
 
   return (

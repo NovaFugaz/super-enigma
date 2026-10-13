@@ -10,6 +10,9 @@ import RegisterPage from '../modules/auth/RegisterPage.jsx'
 import ForgotPasswordPage from '../modules/auth/ForgotPasswordPage.jsx'
 import CatalogPage from '../modules/catalog/CatalogPage.jsx'
 import ProductDetailPage from '../modules/catalog/ProductDetailPage.jsx'
+import ProtectedRoute from './ProtectedRoute.jsx'
+import AccessDeniedPage from '../modules/auth/AccessDeniedPage.jsx'
+import RoleHomePage from '../modules/auth/RoleHomePage.jsx'
 
 function ComingSoon() {
   return (
@@ -33,9 +36,18 @@ export default function AppRouter() {
         <Route path="login" element={<LoginPage />} />
         <Route path="registro" element={<RegisterPage />} />
         <Route path="recuperar" element={<ForgotPasswordPage />} />
+        <Route path="403" element={<AccessDeniedPage />} />
         <Route path="catalogo" element={<CatalogPage />} />
         <Route path="producto/:codigo" element={<ProductDetailPage />} />
-        {/* Aquí irán: catalogo, mis-pedidos  */}
+        <Route element={<ProtectedRoute allowedRoles={['customer']} />}>
+          <Route path="pedidos" element={<ComingSoon />} />
+        </Route>
+        <Route element={<ProtectedRoute allowedRoles={['seller']} />}>
+          <Route path="vendedor" element={<RoleHomePage role="seller" />} />
+        </Route>
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route path="administracion" element={<RoleHomePage role="admin" />} />
+        </Route>
         <Route path="*" element={<ComingSoon />} />
       </Route>
     </Routes>

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AuthContext } from './auth-context.js'
+import { seedDemoAccounts, USER_ROLES } from '../services/mockAuth.js'
 
 const SESSION_KEY = 'sonido-vivo-session'
 
@@ -8,7 +9,8 @@ function readSession() {
     const serialized =
       window.sessionStorage.getItem(SESSION_KEY) ?? window.localStorage.getItem(SESSION_KEY)
     const user = serialized ? JSON.parse(serialized) : null
-    return user && typeof user.email === 'string' ? user : null
+    if (!user || typeof user.email !== 'string') return null
+    return { ...user, role: USER_ROLES.includes(user.role) ? user.role : 'customer' }
   } catch {
     return null
   }
@@ -16,6 +18,17 @@ function readSession() {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readSession)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+    seedDemoAccounts().finally(() => {
+      if (mounted) setReady(true)
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const login = (profile, remember) => {
     try {
@@ -39,5 +52,5 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, ready, login, logout }}>{children}</AuthContext.Provider>
 }
