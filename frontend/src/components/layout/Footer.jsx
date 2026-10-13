@@ -17,7 +17,7 @@ export default function Footer() {
                   11 años de trayectoria en el corazón de Viña del Mar.
                 </p>
                 <p className="footer-strong">
-                  calle 123, Local 12 • Viña del Mar, Región de Valparaíso
+                  Av. Valparaíso 581, Loc 17, Viña del Mar, Valparaíso
                 </p>
               </div>
             </div>
@@ -48,7 +48,7 @@ export default function Footer() {
                   <span className="footer-chip">Starken</span>
                   <span className="footer-chip">Chilexpress</span>
                 </div>
-                <p>Punto Oficial de Retiro en Tienda Calle 123</p>
+                <p>Av. Valparaíso 581, Loc 17</p>
               </div>
             </div>
           </div>
@@ -57,11 +57,7 @@ export default function Footer() {
             <p>
               © {new Date().getFullYear()} Sonido Vivo. Viña del Mar, Chile.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <Link to="/terminos" className="footer-link">Términos de Servicio</Link>
-              <Link to="/despacho" className="footer-link">Políticas de Despacho</Link>
-              <Link to="/privacidad" className="footer-link">Privacidad</Link>
-            </div>
+
           </div>
         </div>
       </footer>
