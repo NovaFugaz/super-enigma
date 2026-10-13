@@ -38,4 +38,66 @@ describe('mock order data', () => {
     expect(seedDemoOrders()).toBe(false)
     expect(window.localStorage.getItem('sonido-vivo-orders')).toBeNull()
   })
+
+  it('simulates approved and rejected payment without persisting a rejected order', async () => {
+    const { simulatePayment } = await import('../services/mockOrders.js')
+    const rejection = simulatePayment(false)
+
+    expect(rejection).toMatchObject({ approved: false, status: 'rechazado' })
+    expect(window.localStorage.getItem('sonido-vivo-orders')).toBeNull()
+    expect(window.localStorage.getItem('sonido-vivo-stock')).toBeNull()
+    expect(simulatePayment(true)).toMatchObject({ approved: true, status: 'aprobado' })
+  })
+
+  it('persists an approved order and decrements stock exactly once', async () => {
+    const { PRODUCTS } = await import('../data/catalog.js')
+    const { savePaidOrder } = await import('../services/mockOrders.js')
+    const order = {
+      id: 'SV-TEST-1',
+      status: 'en_proceso',
+      trackingNumber: 'TRK-TEST-1',
+      statusHistory: [{ status: 'pendiente', createdAt: '2026-10-13T00:00:00.000Z' }],
+      items: [{ code: 'GA001', name: 'Guitarra demo', quantity: 2 }],
+    }
+
+    const result = savePaidOrder(order, PRODUCTS)
+
+    expect(result.order.id).toBe('SV-TEST-1')
+    expect(result.stockOverrides.GA001).toBe(6)
+    expect(JSON.parse(window.localStorage.getItem('sonido-vivo-orders'))[0].id).toBe('SV-TEST-1')
+    expect(JSON.parse(window.localStorage.getItem('sonido-vivo-stock')).GA001).toBe(6)
+  })
+
+  it('does not persist an order when stock is insufficient', async () => {
+    const { PRODUCTS } = await import('../data/catalog.js')
+    const { savePaidOrder } = await import('../services/mockOrders.js')
+    const result = savePaidOrder({
+      id: 'SV-TEST-2',
+      items: [{ code: 'GA001', name: 'Guitarra demo', quantity: 9 }],
+    }, PRODUCTS)
+
+    expect(result.error).toMatch(/Stock insuficiente/)
+    expect(window.localStorage.getItem('sonido-vivo-orders')).toBeNull()
+    expect(window.localStorage.getItem('sonido-vivo-stock')).toBeNull()
+  })
+
+  it('updates order status, records its history and supports tracking lookup', async () => {
+    const { findOrder, seedDemoOrders, updateOrderStatus } = await import('../services/mockOrders.js')
+    seedDemoOrders()
+    const listener = vi.fn()
+    window.addEventListener('sonido-vivo:order-status-changed', listener)
+
+    const result = updateOrderStatus('SV-DEMO-1001', 'en_proceso')
+    const trackedOrder = findOrder('trk-demo-1001')
+
+    expect(result.order.status).toBe('en_proceso')
+    expect(trackedOrder.statusHistory).toHaveLength(2)
+    expect(listener).toHaveBeenCalledOnce()
+    expect(listener.mock.calls[0][0].detail).toMatchObject({
+      orderId: 'SV-DEMO-1001',
+      previousStatus: 'pendiente',
+      status: 'en_proceso',
+    })
+    window.removeEventListener('sonido-vivo:order-status-changed', listener)
+  })
 })
