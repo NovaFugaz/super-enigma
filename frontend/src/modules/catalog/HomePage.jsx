@@ -1,8 +1,10 @@
 import EmptyState from '../../components/common/EmptyState.jsx'
 import CategoryCard from '../../components/catalog/CategoryCard.jsx'
-import { CATEGORIES } from '../../data/catalog.js'
+import { useCatalog } from '../../hooks/useCatalog.js'
 
 export default function HomePage() {
+  const { categories } = useCatalog()
+
   return (
     <>
       <section className="page-container featured-section">
@@ -10,7 +12,7 @@ export default function HomePage() {
         <h2 className="section-title">Explorar por categoría</h2>
 
         <div className="category-grid">
-          {CATEGORIES.map((category) => (
+          {categories.map((category) => (
             <CategoryCard key={category.slug} category={category} />
           ))}
         </div>

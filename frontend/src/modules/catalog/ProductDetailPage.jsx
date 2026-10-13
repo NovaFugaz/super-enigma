@@ -4,18 +4,18 @@ import EmptyState from '../../components/common/EmptyState.jsx'
 import ImageSlot from '../../components/common/ImageSlot.jsx'
 import ProductCard from '../../components/catalog/ProductCard.jsx'
 import StockBadge from '../../components/catalog/StockBadge.jsx'
-import { PRODUCTS, getCategoryBySlug, getProductByCode } from '../../data/catalog.js'
+import { useCatalog } from '../../hooks/useCatalog.js'
 import { formatCLP } from '../../utils/format.js'
 import { useCart } from '../../hooks/useCart.js'
 
-function ProductDetail({ product }) {
+function ProductDetail({ product, products, categories }) {
     const [qty, setQty] = useState(1)
     const [addedQuantity, setAddedQuantity] = useState(0)
     const { addItem } = useCart()
-    const category = getCategoryBySlug(product.categoria)
+    const category = categories.find((item) => item.slug === product.categoria)
     const soldOut = product.stock === 0
 
-    const related = PRODUCTS.filter(
+    const related = products.filter(
         (p) => p.categoria === product.categoria && p.codigo !== product.codigo,
     ).slice(0, 4)
 
@@ -122,7 +122,8 @@ function ProductDetail({ product }) {
 
 export default function ProductDetailPage() {
     const { codigo } = useParams()
-    const product = getProductByCode(codigo)
+    const { products, categories } = useCatalog()
+    const product = products.find((item) => item.codigo === codigo)
 
     if (!product) {
         return (
@@ -137,5 +138,5 @@ export default function ProductDetailPage() {
         )
     }
 
-    return <ProductDetail key={product.codigo} product={product} />
+    return <ProductDetail key={product.codigo} product={product} products={products} categories={categories} />
 }

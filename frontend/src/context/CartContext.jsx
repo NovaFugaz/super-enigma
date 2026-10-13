@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getProductByCode } from '../data/catalog.js'
 import { CartContext } from './cart-context.js'
+import { useCatalog } from '../hooks/useCatalog.js'
 
 const CART_STORAGE_KEY = 'sonido-vivo-cart'
 const ORDER_STORAGE_KEY = 'sonido-vivo-orders'
@@ -22,6 +22,7 @@ function readCart() {
 }
 
 export function CartProvider({ children }) {
+  const { products } = useCatalog()
   const [items, setItems] = useState(readCart)
 
   useEffect(() => {
@@ -33,7 +34,7 @@ export function CartProvider({ children }) {
   }, [items])
 
   const cartItems = items.flatMap((item) => {
-    const product = getProductByCode(item.productCode)
+    const product = products.find((entry) => entry.codigo === item.productCode)
     if (!product || product.stock < 1) return []
 
     const quantity = Math.min(item.quantity, product.stock)
@@ -64,7 +65,7 @@ export function CartProvider({ children }) {
   }
 
   const setQuantity = (productCode, quantity) => {
-    const product = getProductByCode(productCode)
+    const product = products.find((entry) => entry.codigo === productCode)
     if (!product || product.stock < 1) return
 
     const nextQuantity = Math.max(1, Math.min(product.stock, Math.floor(Number(quantity) || 1)))
@@ -87,6 +88,8 @@ export function CartProvider({ children }) {
     const order = {
       id: `SV-${Date.now()}`,
       createdAt: new Date().toISOString(),
+      status: 'pendiente',
+      trackingNumber: `TRK-${Date.now()}`,
       shipping,
       items: cartItems.map(({ product, quantity, lineTotal }) => ({
         code: product.codigo,
