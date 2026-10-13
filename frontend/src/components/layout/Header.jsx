@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import Navbar from "./Navbar.jsx"
 import CartSidebar from "../cart/CartSidebar.jsx"
+import { useCart } from '../../hooks/useCart.js'
 
 const iconProps = {
   width: 18,
@@ -43,6 +44,7 @@ const MenuIcon = ({ open }) => (
 export default function Header() {
   const [open, setOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
+  const { itemCount } = useCart()
   const closeMenu = () => setOpen(false)
   const closeCart = () => setCartOpen(false)
 
@@ -78,10 +80,11 @@ export default function Header() {
             <button
               type="button"
               className="btn-cart"
-              aria-label="Abrir carrito"
+              aria-label={`Abrir carrito${itemCount ? `, ${itemCount} productos` : ''}`}
               onClick={() => setCartOpen(true)}
             >
               <CartIcon />
+              {itemCount > 0 && <span className="cart-count" aria-hidden="true">{itemCount}</span>}
             </button>
             <button
               type="button"

@@ -6,9 +6,12 @@ import ProductCard from '../../components/catalog/ProductCard.jsx'
 import StockBadge from '../../components/catalog/StockBadge.jsx'
 import { PRODUCTS, getCategoryBySlug, getProductByCode } from '../../data/catalog.js'
 import { formatCLP } from '../../utils/format.js'
+import { useCart } from '../../hooks/useCart.js'
 
 function ProductDetail({ product }) {
     const [qty, setQty] = useState(1)
+    const [addedQuantity, setAddedQuantity] = useState(0)
+    const { addItem } = useCart()
     const category = getCategoryBySlug(product.categoria)
     const soldOut = product.stock === 0
 
@@ -17,6 +20,8 @@ function ProductDetail({ product }) {
     ).slice(0, 4)
 
     const handleAddToCart = () => {
+        addItem(product, qty)
+        setAddedQuantity(qty)
     }
 
     return (
@@ -69,6 +74,12 @@ function ProductDetail({ product }) {
                             {soldOut ? 'Sin stock' : 'Agregar al carrito'}
                         </button>
                     </div>
+                    {addedQuantity > 0 && (
+                        <p className="mt-3 text-sm text-costa-deep" role="status" aria-live="polite">
+                            {addedQuantity} {addedQuantity === 1 ? 'unidad agregada' : 'unidades agregadas'}.{' '}
+                            <Link to="/carrito" className="font-semibold underline">Ver carrito</Link>
+                        </p>
+                    )}
 
                     <dl className="spec-list">
                         <div className="spec-row">
