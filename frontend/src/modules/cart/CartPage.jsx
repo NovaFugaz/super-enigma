@@ -2,10 +2,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import CartItem from '../../components/cart/CartItem.jsx'
 import { useCart } from '../../hooks/useCart.js'
 import { LOCATIONS } from '../../services/locations.js'
-import { useCart } from '../../hooks/useCart.js'
 import { useAuth } from '../../hooks/useAuth.js'
 import { formatCLP } from '../../utils/format.js'
-import CartItem from '../../components/cart/CartItem.jsx'
 import { simulatePayment } from '../../services/mockOrders.js'
 
 const PICKUP_POINTS = LOCATIONS.filter((loc) => loc.type === 'pickup')
