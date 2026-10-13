@@ -1,8 +1,11 @@
 import CategoryCard from '../../components/catalog/CategoryCard.jsx'
+import ProductCard from '../../components/catalog/ProductCard.jsx'
+import { FEATURED_CODES } from '../../data/catalog.js'
 import { useCatalog } from '../../hooks/useCatalog.js'
 
 export default function HomePage() {
-  const { categories } = useCatalog()
+  const { categories, products } = useCatalog()
+  const featured = products.filter((product) => FEATURED_CODES.includes(product.codigo))
 
   return (
     <>

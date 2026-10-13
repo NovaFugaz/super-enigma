@@ -51,6 +51,7 @@ export default function Header() {
   const { itemCount } = useCart()
   const { user, logout } = useAuth()
   const closeMenu = () => setOpen(false)
+  const closeCart = () => setCartOpen(false)
 
   return (
     <>
