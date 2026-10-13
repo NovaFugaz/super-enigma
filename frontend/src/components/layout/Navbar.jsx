@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { to: '/contacto', label: 'Contacto' },
 ]
 
-export default function Navbar({ mobile = false, onNavigate }) {
+export default function Navbar({ mobile = false, onNavigate, user, onLogout }) {
   return (
     <nav
       className={mobile ? 'nav-mobile' : 'nav-desktop'}
@@ -28,12 +28,23 @@ export default function Navbar({ mobile = false, onNavigate }) {
 
       {mobile && (
         <>
-          <NavLink to="/login" className="nav-link" onClick={onNavigate}>
-            Iniciar sesión
-          </NavLink>
-          <NavLink to="/registro" className="nav-link" onClick={onNavigate}>
-            Registrarse
-          </NavLink>
+          {user ? (
+            <button
+              type="button"
+              className="nav-link text-left"
+              onClick={() => {
+                onLogout()
+                onNavigate()
+              }}
+            >
+              Cerrar sesión ({user.name.split(' ')[0]})
+            </button>
+          ) : (
+            <>
+              <NavLink to="/login" className="nav-link" onClick={onNavigate}>Iniciar sesión</NavLink>
+              <NavLink to="/registro" className="nav-link" onClick={onNavigate}>Registrarse</NavLink>
+            </>
+          )}
         </>
       )}
     </nav>

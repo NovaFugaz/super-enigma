@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import Navbar from "./Navbar.jsx"
 import CartSidebar from "../cart/CartSidebar.jsx"
 import { useCart } from '../../hooks/useCart.js'
+import { useAuth } from '../../hooks/useAuth.js'
 
 const iconProps = {
   width: 18,
@@ -45,6 +46,7 @@ export default function Header() {
   const [open, setOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const { itemCount } = useCart()
+  const { user, logout } = useAuth()
   const closeMenu = () => setOpen(false)
   const closeCart = () => setCartOpen(false)
 
@@ -71,12 +73,17 @@ export default function Header() {
           <Navbar />
 
           <div className="header-actions">
-            <Link to="/login" className="auth-link">
-              Iniciar sesión
-            </Link>
-            <Link to="/registro" className="auth-register">
-              Registrarse
-            </Link>
+            {user ? (
+              <>
+                <span className="auth-link">Hola, {user.name.split(' ')[0]}</span>
+                <button type="button" className="auth-register" onClick={logout}>Cerrar sesión</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="auth-link">Iniciar sesión</Link>
+                <Link to="/registro" className="auth-register">Registrarse</Link>
+              </>
+            )}
             <button
               type="button"
               className="btn-cart"
@@ -99,7 +106,7 @@ export default function Header() {
         </div>
 
         {/* Para movil */}
-        {open && <Navbar mobile onNavigate={closeMenu} />}
+        {open && <Navbar mobile onNavigate={closeMenu} user={user} onLogout={logout} />}
       </header>
 
       <CartSidebar open={cartOpen} onClose={closeCart} />
