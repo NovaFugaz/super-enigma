@@ -87,7 +87,11 @@ describe('mock order data', () => {
     const listener = vi.fn()
     window.addEventListener('sonido-vivo:order-status-changed', listener)
 
-    const result = updateOrderStatus('SV-DEMO-1001', 'en_proceso')
+    const result = updateOrderStatus('SV-DEMO-1001', 'en_proceso', {
+      id: 'demo-seller',
+      name: 'Vendedor Demo',
+      role: 'seller',
+    })
     const trackedOrder = findOrder('trk-demo-1001')
 
     expect(result.order.status).toBe('en_proceso')
@@ -98,6 +102,28 @@ describe('mock order data', () => {
       previousStatus: 'pendiente',
       status: 'en_proceso',
     })
+    expect(result.order.auditLog[0]).toMatchObject({
+      actorId: 'demo-seller',
+      actorName: 'Vendedor Demo',
+      actorRole: 'seller',
+      action: 'cambio_estado',
+      from: 'pendiente',
+      to: 'en_proceso',
+    })
     window.removeEventListener('sonido-vivo:order-status-changed', listener)
+  })
+
+  it('rejects a transition that skips a workflow state', async () => {
+    const { seedDemoOrders, updateOrderStatus } = await import('../services/mockOrders.js')
+    seedDemoOrders()
+
+    const result = updateOrderStatus('SV-DEMO-1001', 'enviado', {
+      id: 'demo-seller',
+      name: 'Vendedor Demo',
+      role: 'seller',
+    })
+
+    expect(result.error).toMatch(/No se puede cambiar/)
+    expect(JSON.parse(window.localStorage.getItem('sonido-vivo-orders'))[0].status).toBe('pendiente')
   })
 })
