@@ -13,6 +13,8 @@ import ProductDetailPage from '../modules/catalog/ProductDetailPage.jsx'
 import ProtectedRoute from './ProtectedRoute.jsx'
 import AccessDeniedPage from '../modules/auth/AccessDeniedPage.jsx'
 import RoleHomePage from '../modules/auth/RoleHomePage.jsx'
+import OrdersPage from '../modules/cart/OrdersPage.jsx'
+import OrderTrackingPage from '../modules/cart/OrderTrackingPage.jsx'
 
 function ComingSoon() {
   return (
@@ -39,8 +41,9 @@ export default function AppRouter() {
         <Route path="403" element={<AccessDeniedPage />} />
         <Route path="catalogo" element={<CatalogPage />} />
         <Route path="producto/:codigo" element={<ProductDetailPage />} />
+        <Route path="seguimiento" element={<OrderTrackingPage />} />
         <Route element={<ProtectedRoute allowedRoles={['customer']} />}>
-          <Route path="pedidos" element={<ComingSoon />} />
+          <Route path="pedidos" element={<OrdersPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['seller']} />}>
           <Route path="vendedor" element={<RoleHomePage role="seller" />} />

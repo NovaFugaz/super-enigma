@@ -512,6 +512,32 @@
     @apply py-8 text-center text-sm text-costa-sage;
   }
 
+  .order-status {
+    @apply inline-flex rounded-full bg-costa-mist px-3 py-1 text-xs font-semibold text-costa-deep;
+  }
+
+  .order-status-validado,
+  .order-status-enviado,
+  .order-status-entregado {
+    @apply bg-costa-teal/15 text-costa-deep;
+  }
+
+  .order-status-rechazado {
+    @apply bg-red-50 text-red-700;
+  }
+
+  .order-timeline {
+    @apply space-y-4 border-l border-costa-mist pl-5;
+  }
+
+  .order-timeline-item {
+    @apply relative;
+  }
+
+  .order-timeline-dot {
+    @apply absolute -left-[1.65rem] top-1 size-3 rounded-full bg-costa-teal ring-4 ring-white;
+  }
+
   .pickup-section {
     @apply mt-5 border-t border-costa-mist/60 pt-4;
   }
