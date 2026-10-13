@@ -85,4 +85,43 @@ describe('mock auth service', () => {
       email: 'reset@example.cl',
     })
   })
+
+  it('detects existing accounts case-insensitively and exposes managed users', async () => {
+    const { accountExists, createManagedUser, listManagedUsers, registerAccount } = await import('../services/mockAuth.js')
+
+    await registerAccount({
+      name: 'Case User',
+      phone: '+56 9 5555 6666',
+      email: 'case@demo.cl',
+      password: 'Case123!',
+    })
+
+    expect(accountExists('CASE@DEMO.CL')).toBe(true)
+
+    await createManagedUser({
+      name: 'Seller QA',
+      email: 'seller.qa@example.cl',
+      password: 'Seller123!',
+      role: 'seller',
+    })
+
+    expect(listManagedUsers().some((user) => user.email === 'seller.qa@example.cl')).toBe(true)
+    expect(listManagedUsers().some((user) => user.email === 'case@demo.cl')).toBe(true)
+  })
+
+  it('rejects authentication for inactive users', async () => {
+    const { authenticateAccount, createManagedUser } = await import('../services/mockAuth.js')
+
+    const created = await createManagedUser({
+      name: 'Inactive User',
+      email: 'inactive@example.cl',
+      password: 'Inactive123!',
+      role: 'customer',
+    })
+
+    const { updateManagedUser } = await import('../services/mockAuth.js')
+    updateManagedUser(created.user.id, { active: false })
+
+    await expect(authenticateAccount('inactive@example.cl', 'Inactive123!')).resolves.toBeNull()
+  })
 })
