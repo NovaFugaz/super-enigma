@@ -2,6 +2,8 @@ import { PRODUCTS, getProductByCode } from '../data/catalog.js'
 
 const USERS_KEY = 'sonido-vivo-users'
 const ORDERS_KEY = 'sonido-vivo-orders'
+const STOCK_KEY = 'sonido-vivo-stock'
+export const ORDER_STATUS_EVENT = 'sonido-vivo:order-status-changed'
 
 export const ORDER_STATUSES = ['pendiente', 'en_proceso', 'validado', 'enviado', 'entregado', 'rechazado']
 
@@ -12,6 +14,113 @@ function readArray(key) {
   } catch {
     return []
   }
+}
+
+function readObject(key) {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) ?? '{}')
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  } catch {
+    return {}
+  }
+}
+
+function restoreStorage(key, value) {
+  if (value === null) window.localStorage.removeItem(key)
+  else window.localStorage.setItem(key, value)
+}
+
+function notifyStatusChange(order, previousStatus) {
+  window.dispatchEvent(new CustomEvent(ORDER_STATUS_EVENT, {
+    detail: { orderId: order.id, previousStatus, status: order.status },
+  }))
+}
+
+export function getOrders() {
+  return readArray(ORDERS_KEY)
+}
+
+export function findOrder(reference) {
+  const normalizedReference = String(reference ?? '').trim().toLowerCase()
+  if (!normalizedReference) return null
+  return getOrders().find((order) =>
+    [order.id, order.trackingNumber].some((value) => String(value ?? '').toLowerCase() === normalizedReference),
+  ) ?? null
+}
+
+export function simulatePayment(approved) {
+  if (!approved) {
+    return {
+      approved: false,
+      status: 'rechazado',
+      message: 'El pago fue rechazado. No se creó el pedido ni se modificó el stock.',
+    }
+  }
+
+  return {
+    approved: true,
+    status: 'aprobado',
+    transactionId: `PAY-DEMO-${Date.now()}`,
+    authorizationCode: Math.random().toString(36).slice(2, 8).toUpperCase(),
+    message: 'Pago aprobado por la pasarela de demostración.',
+  }
+}
+
+export function savePaidOrder(order, products) {
+  const originalOrders = window.localStorage.getItem(ORDERS_KEY)
+  const originalStock = window.localStorage.getItem(STOCK_KEY)
+  const orders = readArray(ORDERS_KEY)
+  const stockOverrides = readObject(STOCK_KEY)
+
+  for (const item of order.items) {
+    const product = products.find((entry) => entry.codigo === item.code)
+    const availableStock = Number(stockOverrides[item.code] ?? product?.stock)
+    if (!product || !Number.isInteger(availableStock) || availableStock < item.quantity) {
+      return { error: `Stock insuficiente para ${item.name}.` }
+    }
+    stockOverrides[item.code] = availableStock - item.quantity
+  }
+
+  try {
+    window.localStorage.setItem(STOCK_KEY, JSON.stringify(stockOverrides))
+    window.localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...orders]))
+  } catch {
+    try {
+      restoreStorage(STOCK_KEY, originalStock)
+      restoreStorage(ORDERS_KEY, originalOrders)
+    } catch {
+      // Preserve the original persistence error as a failed checkout.
+    }
+    return { error: 'No se pudo guardar el pedido en este navegador.' }
+  }
+
+  notifyStatusChange(order, 'pendiente')
+  return { order, stockOverrides }
+}
+
+export function updateOrderStatus(orderId, status) {
+  if (!ORDER_STATUSES.includes(status)) return { error: 'Estado de pedido no válido.' }
+  const orders = readArray(ORDERS_KEY)
+  const currentOrder = orders.find((order) => order.id === orderId)
+  if (!currentOrder) return { error: 'No se encontró el pedido.' }
+  if (currentOrder.status === status) return { order: currentOrder, changed: false }
+
+  const changedAt = new Date().toISOString()
+  const updatedOrder = {
+    ...currentOrder,
+    status,
+    statusHistory: [...(currentOrder.statusHistory ?? []), { status, createdAt: changedAt }],
+  }
+  const updatedOrders = orders.map((order) => order.id === orderId ? updatedOrder : order)
+
+  try {
+    window.localStorage.setItem(ORDERS_KEY, JSON.stringify(updatedOrders))
+  } catch {
+    return { error: 'No se pudo actualizar el pedido en este navegador.' }
+  }
+
+  notifyStatusChange(updatedOrder, currentOrder.status)
+  return { order: updatedOrder, changed: true }
 }
 
 function buildItems(codes) {

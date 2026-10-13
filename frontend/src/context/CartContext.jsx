@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { CartContext } from './cart-context.js'
 import { useCatalog } from '../hooks/useCatalog.js'
+import { savePaidOrder } from '../services/mockOrders.js'
 
 const CART_STORAGE_KEY = 'sonido-vivo-cart'
-const ORDER_STORAGE_KEY = 'sonido-vivo-orders'
 
 function readCart() {
   try {
@@ -22,7 +22,7 @@ function readCart() {
 }
 
 export function CartProvider({ children }) {
-  const { products } = useCatalog()
+  const { products, applyNewStock } = useCatalog()
   const [items, setItems] = useState(readCart)
 
   useEffect(() => {
@@ -82,14 +82,36 @@ export function CartProvider({ children }) {
 
   const clearCart = () => setItems([])
 
-  const createOrder = (shipping) => {
-    if (cartItems.length === 0) return null
+  const createOrder = ({ shipping, customer, payment }) => {
+    if (cartItems.length === 0) return { error: 'El carrito está vacío.' }
+    if (!customer || customer.role !== 'customer') return { error: 'Inicia sesión con una cuenta de cliente para comprar.' }
+    if (!payment?.approved) return { error: 'El pago no fue aprobado.' }
 
+    const createdAt = new Date().toISOString()
+    const orderId = `SV-${Date.now()}`
     const order = {
-      id: `SV-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      status: 'pendiente',
-      trackingNumber: `TRK-${Date.now()}`,
+      id: orderId,
+      createdAt,
+      customerId: customer.id,
+      customerName: customer.name,
+      customerEmail: customer.email,
+      status: 'en_proceso',
+      trackingNumber: `TRK-${orderId.slice(3)}`,
+      statusHistory: [
+        { status: 'pendiente', createdAt },
+        { status: 'en_proceso', createdAt },
+      ],
+      payment: {
+        method: 'tarjeta_simulada',
+        status: payment.status,
+        transactionId: payment.transactionId,
+        authorizationCode: payment.authorizationCode,
+      },
+      receipt: {
+        number: `BOL-${orderId}`,
+        type: 'Boleta electrónica simulada',
+        issuedAt: createdAt,
+      },
       shipping,
       items: cartItems.map(({ product, quantity, lineTotal }) => ({
         code: product.codigo,
@@ -105,16 +127,12 @@ export function CartProvider({ children }) {
       total,
     }
 
-    try {
-      const savedOrders = JSON.parse(window.localStorage.getItem(ORDER_STORAGE_KEY) ?? '[]')
-      const orders = Array.isArray(savedOrders) ? savedOrders : []
-      window.localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify([order, ...orders]))
-    } catch {
-      // Confirmation still works when browser storage is unavailable.
-    }
+    const result = savePaidOrder(order, products)
+    if (result.error) return result
 
+    applyNewStock(result.stockOverrides)
     clearCart()
-    return order
+    return { order: result.order }
   }
 
   return (

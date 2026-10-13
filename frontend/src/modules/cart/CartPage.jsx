@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { LOCATIONS } from '../../services/locations.js'
 import { useCart } from '../../hooks/useCart.js'
+import { useAuth } from '../../hooks/useAuth.js'
 import { formatCLP } from '../../utils/format.js'
 import CartItem from '../../components/cart/CartItem.jsx'
+import { simulatePayment } from '../../services/mockOrders.js'
 
 const PICKUP_POINTS = LOCATIONS.filter((loc) => loc.type === 'pickup')
 
@@ -13,25 +15,44 @@ export default function CartPage() {
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [checkoutError, setCheckoutError] = useState('')
   const [order, setOrder] = useState(null)
+  const [paymentMessage, setPaymentMessage] = useState('')
   const { cartItems, subtotal, tax, total, createOrder } = useCart()
+  const { user } = useAuth()
 
-  const handleCheckout = (event) => {
-    event.preventDefault()
+  const handlePayment = (approved) => {
+    setCheckoutError('')
+    setPaymentMessage('')
+    if (!user || user.role !== 'customer') {
+      setCheckoutError('Inicia sesión con una cuenta de cliente para continuar.')
+      return
+    }
     if (shipping === 'domicilio' && !deliveryAddress.trim()) {
       setCheckoutError('Ingresa la dirección donde recibirás el pedido.')
       return
     }
 
+    const payment = simulatePayment(approved)
+    if (!payment.approved) {
+      setPaymentMessage(payment.message)
+      return
+    }
+
     const pickup = PICKUP_POINTS.find((point) => point.id === pickupId)
-    const createdOrder = createOrder({
-      method: shipping,
-      address: shipping === 'domicilio' ? deliveryAddress.trim() : '',
-      pickup: shipping === 'retiro' && pickup ? { name: pickup.name, address: pickup.address } : null,
+    const result = createOrder({
+      shipping: {
+        method: shipping,
+        address: shipping === 'domicilio' ? deliveryAddress.trim() : '',
+        pickup: shipping === 'retiro' && pickup ? { name: pickup.name, address: pickup.address } : null,
+      },
+      customer: user,
+      payment,
     })
 
-    if (!createdOrder) return
-    setCheckoutError('')
-    setOrder(createdOrder)
+    if (result.error) {
+      setPaymentMessage(result.error)
+      return
+    }
+    setOrder(result.order)
   }
 
   if (order) {
@@ -47,10 +68,20 @@ export default function CartPage() {
               ? `Retiro en ${order.shipping.pickup?.name ?? 'punto seleccionado'}`
               : `Despacho a ${order.shipping.address}`}
           </p>
+          <p className="mt-3 text-sm font-semibold text-costa-deep">{order.receipt.type}: {order.receipt.number}</p>
+          <p className="mt-1 text-xs text-costa-sage">
+            Pago aprobado · Ref. {order.payment.transactionId} · Autorización {order.payment.authorizationCode}
+          </p>
           <div className="cart-summary-rows mt-5">
             <div className="cart-row"><span>Productos</span><span>{order.items.reduce((count, item) => count + item.quantity, 0)}</span></div>
             <div className="cart-total-row"><span>Total del pedido</span><span>{formatCLP(order.total)}</span></div>
           </div>
+          <Link
+            to={`/seguimiento?tracking=${encodeURIComponent(order.trackingNumber)}`}
+            className="auth-inline-link mt-4 inline-block"
+          >
+            Seguir pedido {order.trackingNumber}
+          </Link>
           <Link to="/catalogo" className="btn-primary mt-6 inline-flex">Seguir comprando</Link>
         </div>
       </section>
@@ -183,14 +214,25 @@ export default function CartPage() {
           </div>
 
           {checkoutError && <p id="checkout-error" className="text-sm text-red-700" role="alert">{checkoutError}</p>}
-          <button
-            type="button"
-            className="btn-primary btn-block disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={cartItems.length === 0}
-            onClick={handleCheckout}
-          >
-            Confirmar pedido simulado
-          </button>
+          {paymentMessage && <p className="text-sm text-red-700" role="alert">{paymentMessage}</p>}
+          {cartItems.length > 0 && !user && (
+            <div className="space-y-2">
+              <p className="text-sm text-costa-deep">Inicia sesión como cliente para pagar y guardar el pedido en tu historial.</p>
+              <Link to="/login" state={{ from: { pathname: '/carrito' } }} className="btn-primary btn-block">
+                Iniciar sesión
+              </Link>
+            </div>
+          )}
+          {cartItems.length > 0 && user?.role === 'customer' && (
+            <div className="space-y-2">
+              <button type="button" className="btn-primary btn-block" onClick={() => handlePayment(true)}>
+                Pagar con tarjeta (simulación)
+              </button>
+              <button type="button" className="btn-outline btn-block" onClick={() => handlePayment(false)}>
+                Simular pago rechazado
+              </button>
+            </div>
+          )}
           <Link to="/catalogo" className="btn-outline btn-block">
             Seguir comprando
           </Link>
