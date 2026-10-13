@@ -6,6 +6,14 @@ const STOCK_KEY = 'sonido-vivo-stock'
 export const ORDER_STATUS_EVENT = 'sonido-vivo:order-status-changed'
 
 export const ORDER_STATUSES = ['pendiente', 'en_proceso', 'validado', 'enviado', 'entregado', 'rechazado']
+export const ORDER_STATUS_TRANSITIONS = {
+  pendiente: ['en_proceso', 'rechazado'],
+  en_proceso: ['validado', 'rechazado'],
+  validado: ['enviado', 'rechazado'],
+  enviado: ['entregado'],
+  entregado: [],
+  rechazado: [],
+}
 
 function readArray(key) {
   try {
@@ -98,18 +106,33 @@ export function savePaidOrder(order, products) {
   return { order, stockOverrides }
 }
 
-export function updateOrderStatus(orderId, status) {
+export function updateOrderStatus(orderId, status, actor = {}) {
   if (!ORDER_STATUSES.includes(status)) return { error: 'Estado de pedido no válido.' }
   const orders = readArray(ORDERS_KEY)
   const currentOrder = orders.find((order) => order.id === orderId)
   if (!currentOrder) return { error: 'No se encontró el pedido.' }
   if (currentOrder.status === status) return { order: currentOrder, changed: false }
+  if (!ORDER_STATUS_TRANSITIONS[currentOrder.status]?.includes(status)) {
+    return { error: `No se puede cambiar de ${currentOrder.status} a ${status}.` }
+  }
 
   const changedAt = new Date().toISOString()
   const updatedOrder = {
     ...currentOrder,
     status,
     statusHistory: [...(currentOrder.statusHistory ?? []), { status, createdAt: changedAt }],
+    auditLog: [
+      ...(currentOrder.auditLog ?? []),
+      {
+        actorId: actor.id ?? 'demo-seller',
+        actorName: actor.name ?? 'Vendedor Demo',
+        actorRole: actor.role ?? 'seller',
+        action: 'cambio_estado',
+        from: currentOrder.status,
+        to: status,
+        createdAt: changedAt,
+      },
+    ],
   }
   const updatedOrders = orders.map((order) => order.id === orderId ? updatedOrder : order)
 

@@ -57,8 +57,27 @@ export function CatalogProvider({ children }) {
     setProducts((currentProducts) => applyStockOverrides(currentProducts, overrides))
   }
 
+  const updateStock = (productCode, quantity) => {
+    if (!products.some((product) => product.codigo === productCode)) {
+      return { error: 'No se encontró el producto.' }
+    }
+    if (!Number.isInteger(quantity) || quantity < 0) {
+      return { error: 'El stock debe ser un entero mayor o igual a cero.' }
+    }
+
+    const nextOverrides = { ...stockOverrides, [productCode]: quantity }
+    try {
+      window.localStorage.setItem(STOCK_KEY, JSON.stringify(nextOverrides))
+    } catch {
+      return { error: 'No se pudo guardar el stock en este navegador.' }
+    }
+
+    applyNewStock(nextOverrides)
+    return { stock: quantity }
+  }
+
   return (
-    <CatalogContext.Provider value={{ categories: CATEGORIES, products, source, loading, error, stockOverrides, applyNewStock }}>
+    <CatalogContext.Provider value={{ categories: CATEGORIES, products, source, loading, error, stockOverrides, applyNewStock, updateStock }}>
       {children}
     </CatalogContext.Provider>
   )
