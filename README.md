@@ -92,7 +92,7 @@ Al iniciar se precargan 6 pedidos del cliente demo, uno por cada estado, útiles
 | Ruta | Rol | Contenido |
 | --- | --- | --- |
 | `/pedidos` | Cliente | Historial de sus propios pedidos y estado |
-| `/vendedor` | Vendedor | **Inventario:** tabla con búsqueda, filtros, alerta de stock bajo (umbral configurable) y edición de stock. **Pedidos:** búsqueda, cambio de estado con transiciones válidas y registro de auditoría. Pensado para pantallas móviles (≥ 360 px) |
+| `/vendedor` | Vendedor | **Inventario:** tabla con búsqueda, filtros, alerta de stock bajo (umbral configurable) y edición de stock. **Pedidos:** búsqueda, cambio de estado con transiciones válidas y registro de auditoría. |
 | `/administracion` | Administrador | **Dashboard:** KPIs, ventas por fecha, productos top, filtro por período y exportación a CSV. **Usuarios y roles:** crear, editar, desactivar y asignar rol. **Productos:** crear, editar y desactivar. **Inventario:** control de stock |
 
 Un usuario sin sesión que entra a una ruta protegida va a `/login`; con sesión pero sin el rol correcto, va a `/403`.
