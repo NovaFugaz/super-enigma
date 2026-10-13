@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AuthContext } from './auth-context.js'
 import { seedDemoAccounts, USER_ROLES } from '../services/mockAuth.js'
+import { seedDemoOrders } from '../services/mockOrders.js'
 
 const SESSION_KEY = 'sonido-vivo-session'
 
@@ -22,7 +23,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let mounted = true
-    seedDemoAccounts().finally(() => {
+    seedDemoAccounts().then(() => seedDemoOrders()).finally(() => {
       if (mounted) setReady(true)
     })
     return () => {
