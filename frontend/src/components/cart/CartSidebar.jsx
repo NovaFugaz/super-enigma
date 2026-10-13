@@ -34,21 +34,14 @@ export default function CartSidebar({ open, onClose }) {
       <div
         className={`cart-overlay ${open ? 'cart-overlay-open' : ''}`}
         onClick={onClose}
-        aria-hidden="true"
-      />
+        aria-hidden="true" />
 
       <aside
         className={`cart-sidebar ${open ? 'cart-sidebar-open' : ''}`}
-        aria-label="Carrito de compras"
-      >
+        aria-label="Carrito de compras">
         <div className="cart-sidebar-header">
           <h2 className="cart-sidebar-title">Tu carrito</h2>
-          <button
-            type="button"
-            className="cart-close"
-            aria-label="Cerrar carrito"
-            onClick={onClose}
-          >
+          <button type="button" className="cart-close" aria-label="Cerrar carrito" onClick={onClose}>
             <CloseIcon />
           </button>
         </div>

@@ -52,6 +52,12 @@ export default function LoginPage() {
           Ingresa con tu correo para ver tus pedidos y comprar más rápido.
         </p>
 
+        {notice && (
+          <p className="auth-notice" role="alert">
+            {notice}
+          </p>
+        )}
+
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <FormField
             label="Correo electrónico"

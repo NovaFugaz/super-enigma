@@ -51,7 +51,6 @@ export default function Header() {
   const { itemCount } = useCart()
   const { user, logout } = useAuth()
   const closeMenu = () => setOpen(false)
-  const closeCart = () => setCartOpen(false)
 
   return (
     <>
@@ -103,8 +102,7 @@ export default function Header() {
               className="nav-toggle"
               aria-label="Abrir menú"
               aria-expanded={open}
-              onClick={() => setOpen((v) => !v)}
-            >
+              onClick={() => setOpen((v) => !v)}>
               <MenuIcon open={open} />
             </button>
           </div>

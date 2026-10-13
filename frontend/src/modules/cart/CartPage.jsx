@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import CartItem from '../../components/cart/CartItem.jsx'
+import { useCart } from '../../hooks/useCart.js'
 import { LOCATIONS } from '../../services/locations.js'
 import { useCart } from '../../hooks/useCart.js'
 import { useAuth } from '../../hooks/useAuth.js'
@@ -95,7 +96,6 @@ export default function CartPage() {
 
       <div className="cart-page-grid">
         <div className="cart-page-main">
-          {/* Productos */}
           <div className="cart-card">
             <h2 className="cart-card-title">Productos</h2>
 
@@ -111,6 +111,12 @@ export default function CartPage() {
                 ))
               )}
             </div>
+
+            {!isEmpty && (
+              <button type="button" className="btn-danger-outline mt-4" onClick={clearCart}>
+                Vaciar carrito
+              </button>
+            )}
           </div>
 
           {/* Tipo de despacho */}
@@ -124,8 +130,7 @@ export default function CartPage() {
                   name="shipping"
                   value="domicilio"
                   checked={shipping === 'domicilio'}
-                  onChange={(e) => setShipping(e.target.value)}
-                />
+                  onChange={(e) => setShipping(e.target.value)} />
                 <span>
                   <span className="shipping-option-title">Despacho a domicilio</span>
                   <span className="shipping-option-text">
@@ -140,8 +145,7 @@ export default function CartPage() {
                   name="shipping"
                   value="retiro"
                   checked={shipping === 'retiro'}
-                  onChange={(e) => setShipping(e.target.value)}
-                />
+                  onChange={(e) => setShipping(e.target.value)} />
                 <span>
                   <span className="shipping-option-title">Retiro en punto</span>
                   <span className="shipping-option-text">
@@ -178,9 +182,8 @@ export default function CartPage() {
                         type="radio"
                         name="pickup"
                         value={point.id}
-                        checked={pickupId === point.id}
-                        onChange={(e) => setPickupId(e.target.value)}
-                      />
+                        checked={selectedPickup === point.id}
+                        onChange={(e) => setPickupId(e.target.value)} />
                       <span>
                         <span className="shipping-option-title">{point.name}</span>
                         <span className="shipping-option-text">{point.address}</span>
@@ -194,7 +197,6 @@ export default function CartPage() {
           </div>}
         </div>
 
-        {/* Resumen */}
         <aside className="cart-card cart-summary">
           <h2 className="cart-card-title">Resumen</h2>
 
@@ -207,10 +209,24 @@ export default function CartPage() {
               <span>IVA (19%)</span>
               <span className="cart-row-strong">{formatCLP(tax)}</span>
             </div>
+            {!totals.ivaIncluded && (
+              <div className="cart-row">
+                <span>IVA (19%)</span>
+                <span className="cart-row-strong">{formatCLP(totals.iva)}</span>
+              </div>
+            )}
             <div className="cart-total-row">
               <span>Total</span>
               <span>{formatCLP(total)}</span>
             </div>
+            {totals.ivaIncluded && !isEmpty && (
+              <p className="cart-item-meta">Incluye IVA (19%): {formatCLP(totals.iva)}</p>
+            )}
+            {totals.missingForFreeShipping > 0 && (
+              <p className="cart-item-meta">
+                Te faltan {formatCLP(totals.missingForFreeShipping)} para despacho gratis.
+              </p>
+            )}
           </div>
 
           {checkoutError && <p id="checkout-error" className="text-sm text-red-700" role="alert">{checkoutError}</p>}

@@ -155,7 +155,7 @@
     @apply py-12 sm:py-16;
   }
 
-    /*  Catálogo: imágenes  */
+  /*  Catálogo: imágenes  */
   .image-slot {
     @apply block w-full bg-costa-mist/40 object-cover;
   }
@@ -804,7 +804,7 @@
     @apply grid gap-3 sm:grid-cols-2;
   }
 
-    /* Login y registro  */
+  /* Login y registro  */
   .auth-page {
     @apply flex justify-center py-12 sm:py-16;
   }
@@ -819,6 +819,10 @@
 
   .auth-subtitle {
     @apply mt-2 text-sm text-costa-deep;
+  }
+
+  .auth-notice {
+    @apply mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900;
   }
 
   .auth-form {
