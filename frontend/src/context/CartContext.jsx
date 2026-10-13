@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CartContext } from './cart-context.js'
 import { useCatalog } from '../hooks/useCatalog.js'
 import { savePaidOrder } from '../services/mockOrders.js'
+import { calcTotals } from '../utils/cart.js'
 
 const CART_STORAGE_KEY = 'sonido-vivo-cart'
 
@@ -87,6 +88,10 @@ export function CartProvider({ children }) {
     if (!customer || customer.role !== 'customer') return { error: 'Inicia sesión con una cuenta de cliente para comprar.' }
     if (!payment?.approved) return { error: 'El pago no fue aprobado.' }
 
+    const orderTotals = calcTotals(
+      cartItems.map(({ product, quantity }) => ({ product, qty: quantity })),
+      shipping?.method,
+    )
     const createdAt = new Date().toISOString()
     const orderId = `SV-${Date.now()}`
     const order = {
@@ -122,9 +127,10 @@ export function CartProvider({ children }) {
         quantity,
         lineTotal,
       })),
-      subtotal,
-      tax,
-      total,
+      subtotal: orderTotals.subtotal,
+      tax: orderTotals.iva,
+      shippingCost: orderTotals.shippingCost,
+      total: orderTotals.total,
     }
 
     const result = savePaidOrder(order, products)

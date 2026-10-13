@@ -1,22 +1,29 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import CartItem from '../../components/cart/CartItem.jsx'
 import { useCart } from '../../hooks/useCart.js'
 import { LOCATIONS } from '../../services/locations.js'
 import { useAuth } from '../../hooks/useAuth.js'
 import { formatCLP } from '../../utils/format.js'
+import { calcTotals } from '../../utils/cart.js'
 import { simulatePayment } from '../../services/mockOrders.js'
 
 const PICKUP_POINTS = LOCATIONS.filter((loc) => loc.type === 'pickup')
 
 export default function CartPage() {
   const [shipping, setShipping] = useState('domicilio')
-  const [pickupId, setPickupId] = useState(PICKUP_POINTS[0]?.id)
+  const [pickupId, setPickupId] = useState(PICKUP_POINTS[0]?.id ?? '')
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [checkoutError, setCheckoutError] = useState('')
   const [order, setOrder] = useState(null)
   const [paymentMessage, setPaymentMessage] = useState('')
-  const { cartItems, subtotal, tax, total, createOrder } = useCart()
+  const { cartItems, clearCart, createOrder } = useCart()
   const { user } = useAuth()
+  const isEmpty = cartItems.length === 0
+  const totals = calcTotals(
+    cartItems.map(({ product, quantity }) => ({ product, qty: quantity })),
+    shipping,
+  )
 
   const handlePayment = (approved) => {
     setCheckoutError('')
@@ -180,7 +187,7 @@ export default function CartPage() {
                         type="radio"
                         name="pickup"
                         value={point.id}
-                        checked={selectedPickup === point.id}
+                        checked={pickupId === point.id}
                         onChange={(e) => setPickupId(e.target.value)} />
                       <span>
                         <span className="shipping-option-title">{point.name}</span>
@@ -201,11 +208,7 @@ export default function CartPage() {
           <div className="cart-summary-rows">
             <div className="cart-row">
               <span>Subtotal</span>
-              <span className="cart-row-strong">{formatCLP(subtotal)}</span>
-            </div>
-            <div className="cart-row">
-              <span>IVA (19%)</span>
-              <span className="cart-row-strong">{formatCLP(tax)}</span>
+              <span className="cart-row-strong">{formatCLP(totals.subtotal)}</span>
             </div>
             {!totals.ivaIncluded && (
               <div className="cart-row">
@@ -213,9 +216,15 @@ export default function CartPage() {
                 <span className="cart-row-strong">{formatCLP(totals.iva)}</span>
               </div>
             )}
+            {totals.shippingCost > 0 && (
+              <div className="cart-row">
+                <span>Despacho</span>
+                <span className="cart-row-strong">{formatCLP(totals.shippingCost)}</span>
+              </div>
+            )}
             <div className="cart-total-row">
               <span>Total</span>
-              <span>{formatCLP(total)}</span>
+              <span>{formatCLP(totals.total)}</span>
             </div>
             {totals.ivaIncluded && !isEmpty && (
               <p className="cart-item-meta">Incluye IVA (19%): {formatCLP(totals.iva)}</p>
