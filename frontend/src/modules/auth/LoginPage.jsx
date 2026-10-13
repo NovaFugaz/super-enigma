@@ -16,7 +16,8 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { login } = useAuth()
-  const [values, setValues] = useState({ email: '', password: '' })
+  const notice = location.state?.notice
+  const [values, setValues] = useState({ email: location.state?.email ?? '', password: '' })
   const [remember, setRemember] = useState(false)
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
