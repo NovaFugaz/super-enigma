@@ -38,8 +38,8 @@ public class User
     private String username;
 
     @NotBlank(message = "El número de teléfono es obligatorio")
-    @Size(max = 20, message = "El teléfono no puede superar los 20 caracteres.")
-    @Column(nullable = false, length = 20)
+    @Size(max = 20, message = "El teléfono no puede superar los 9 caracteres.")
+    @Column(nullable = false, length = 9)
     private String phone;
 
     @NotBlank(message = "El correo electrónico es obligatorio.")
