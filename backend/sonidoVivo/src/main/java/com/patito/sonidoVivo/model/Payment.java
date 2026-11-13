@@ -17,14 +17,14 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
-@Entity 
+@Entity
 @Table(name = "pagos")
-@Getter 
-@Setter 
-public class Payment 
+@Getter
+@Setter
+public class Payment
 {
 
-    @Id 
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -48,12 +48,16 @@ public class Payment
     @Column(length = 50)
     private String authorizationCode;
 
+    @Column(length = 255)
+    private String proofReference;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @PrePersist 
-    protected void onCreate() 
+    @PrePersist
+    protected void onCreate()
     {
         this.createdAt = LocalDateTime.now();
     }
+
 }

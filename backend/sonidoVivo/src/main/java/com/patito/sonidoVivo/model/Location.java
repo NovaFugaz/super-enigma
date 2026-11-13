@@ -3,7 +3,14 @@ package com.patito.sonidoVivo.model;
 import com.patito.sonidoVivo.enums.Carrier;
 import com.patito.sonidoVivo.enums.LocationType;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,7 +19,8 @@ import lombok.Setter;
 @Table(name = "ubicaciones")
 @Getter
 @Setter
-public class Location {
+public class Location
+{
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,7 +50,7 @@ public class Location {
     private double longitude;
 
     @NotBlank
-    @Column(nullable = false, length = 250)
+    @Column(nullable = false, length = 500)
     private String hours;
 
     @Column(length = 250)
