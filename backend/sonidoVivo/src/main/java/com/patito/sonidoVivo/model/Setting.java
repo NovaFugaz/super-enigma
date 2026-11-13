@@ -1,6 +1,8 @@
 package com.patito.sonidoVivo.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -11,6 +13,10 @@ import lombok.Setter;
 @Setter 
 public class Setting {
 
+    @Id 
+    @Column(name = "setting_key", length = 50)
     private String key;
+
+    @Column(name = "setting_value", nullable = false)
     private String value;
 }
