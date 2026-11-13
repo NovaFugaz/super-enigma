@@ -1,9 +1,0 @@
-1. Users x
-2. Products x 
-3. Locations x
-4. Orders x
-5. OrderItems x 
-6. OrderStatus x
-7. Payments x
-8. NewsletterSubscriber x
-9. Settings x

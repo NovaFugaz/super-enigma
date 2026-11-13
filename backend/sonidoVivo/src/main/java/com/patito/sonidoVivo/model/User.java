@@ -2,6 +2,7 @@ package com.patito.sonidoVivo.model;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.patito.sonidoVivo.enums.UserRole;
 
 import jakarta.persistence.Column;
@@ -20,14 +21,14 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
-@Entity 
+@Entity
 @Table(name = "usuarios")
-@Getter 
+@Getter
 @Setter
-public class User 
+public class User
 {
 
-    @Id 
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -36,8 +37,9 @@ public class User
     @Column(nullable = false, length = 40)
     private String username;
 
-    @NotBlank(message = "El número de télefono es obligatorio")
-    @Column(nullable = false, length = 9)
+    @NotBlank(message = "El número de teléfono es obligatorio")
+    @Size(max = 20, message = "El teléfono no puede superar los 20 caracteres.")
+    @Column(nullable = false, length = 20)
     private String phone;
 
     @NotBlank(message = "El correo electrónico es obligatorio.")
@@ -45,23 +47,17 @@ public class User
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
+    @JsonIgnore
     @NotBlank(message = "La contraseña es obligatoria.")
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private UserRole rol;
 
     @Column(nullable = false)
     private Boolean active = true;
-
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    private LocalDateTime updateAt;
-
-    private String token;
 
     @Column(name = "reset_token_hash")
     private String resetTokenHash;
@@ -69,18 +65,22 @@ public class User
     @Column(name = "reset_token_expires_at")
     private LocalDateTime resetTokenExpiresAt;
 
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
+
     @PrePersist
-    protected void onCreate() 
+    protected void onCreate()
     {
         this.createdAt = LocalDateTime.now();
-        this.updateAt = LocalDateTime.now();
-
+        this.updatedAt = this.createdAt;
     }
 
     @PreUpdate
-    protected void onUpdate() 
+    protected void onUpdate()
     {
-        this.updateAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
-    
+
 }

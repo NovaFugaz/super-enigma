@@ -17,18 +17,19 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
-@Entity 
+@Entity
 @Table(name = "historial_estados")
-@Getter 
-@Setter 
-public class OrderStatusLog {
+@Getter
+@Setter
+public class OrderStatusLog
+{
 
-    @Id 
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "order_id", nullable = false)
-    private Long oderId;
+    private Long orderId;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
@@ -48,9 +49,10 @@ public class OrderStatusLog {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @PrePersist 
-    protected void onCreate() {
+    @PrePersist
+    protected void onCreate()
+    {
         this.createdAt = LocalDateTime.now();
     }
-    
+
 }

@@ -1,13 +1,25 @@
 package com.patito.sonidoVivo.model;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.patito.sonidoVivo.enums.OrderStatus;
 import com.patito.sonidoVivo.enums.ReceiptType;
 import com.patito.sonidoVivo.enums.ShippingMethod;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,7 +27,8 @@ import lombok.Setter;
 @Table(name = "pedidos")
 @Getter
 @Setter
-public class Order {
+public class Order
+{
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,11 +37,11 @@ public class Order {
     @Column(nullable = false, unique = true, length = 30)
     private String orderNumber;
 
-    @Column(nullable = false, unique = true, length = 30)
+    @Column(unique = true, length = 30)
     private String trackingNumber;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @Column(name = "buyer_id", nullable = false)
+    private Long buyerId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -64,8 +77,8 @@ public class Order {
 
     private LocalDateTime receiptIssuedAt;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
-    private List<OrderItem> items;
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItem> items = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -73,13 +86,16 @@ public class Order {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    protected void onCreate() {
+    protected void onCreate()
+    {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = this.createdAt;
     }
 
     @PreUpdate
-    protected void onUpdate() {
+    protected void onUpdate()
+    {
         this.updatedAt = LocalDateTime.now();
     }
+
 }
