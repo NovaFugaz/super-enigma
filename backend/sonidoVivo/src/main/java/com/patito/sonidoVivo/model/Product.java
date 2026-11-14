@@ -26,7 +26,7 @@ import lombok.Setter;
 @Table(name = "productos")
 @Getter
 @Setter
-public class Product
+public class Product 
 {
 
     @Id
@@ -34,6 +34,7 @@ public class Product
     private Long id;
 
     @NotBlank(message = "El código del producto es obligatorio.")
+    @Size(max = 30, message = "El código no puede superar los 30 caracteres.")
     @Column(nullable = false, unique = true, length = 30, updatable = false)
     private String code;
 
@@ -47,10 +48,11 @@ public class Product
     private String brand;
 
     @NotBlank(message = "El modelo del producto es obligatorio.")
+    @Size(max = 70, message = "El modelo no debe superar los 70 caracteres.")
     @Column(nullable = false, length = 70)
     private String model;
 
-    @NotBlank(message = "La descripción del producto es obligatoria")
+    @NotBlank(message = "La descripción del producto es obligatoria.")
     @Size(max = 400, message = "La descripción no debe superar los 400 caracteres.")
     @Column(nullable = false, length = 400)
     private String description;
@@ -93,16 +95,13 @@ public class Product
     private LocalDateTime updatedAt;
 
     @PrePersist
-    protected void onCreate()
-    {
+    protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = this.createdAt;
     }
 
     @PreUpdate
-    protected void onUpdate()
-    {
+    protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
 }
