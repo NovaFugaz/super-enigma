@@ -17,6 +17,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -38,7 +39,7 @@ public class User
     private String username;
 
     @NotBlank(message = "El número de teléfono es obligatorio")
-    @Size(max = 20, message = "El teléfono no puede superar los 9 caracteres.")
+    @Pattern(regexp = "\\d{9}", message = "El teléfono debe tener 9 dígitos.")
     @Column(nullable = false, length = 9)
     private String phone;
 
