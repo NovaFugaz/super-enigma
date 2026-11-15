@@ -38,8 +38,8 @@ public class User
     @Column(nullable = false, length = 40)
     private String username;
 
-    @NotBlank(message = "El número de teléfono es obligatorio")
-    @Pattern(regexp = "\\d{9}", message = "El teléfono debe tener 9 dígitos.")
+    @NotBlank(message = "El número de teléfono es obligatorio.")
+    @Pattern(regexp = "^\\d{9}$", message = "El teléfono debe tener exactamente 9 dígitos.")
     @Column(nullable = false, length = 9)
     private String phone;
 

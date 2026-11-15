@@ -1,12 +1,17 @@
 package com.patito.sonidoVivo.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.patito.sonidoVivo.dto.PageResponse;
 import com.patito.sonidoVivo.dto.ProductRequest;
 import com.patito.sonidoVivo.dto.ProductResponse;
 import com.patito.sonidoVivo.exception.ConflictException;
@@ -17,39 +22,42 @@ import com.patito.sonidoVivo.model.Product;
 import com.patito.sonidoVivo.repository.CategoryRepository;
 import com.patito.sonidoVivo.repository.ProductRepository;
 
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Order;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class ProductService {
 
+    private static final int CATALOG_PAGE_SIZE = 12;
+    private static final int ADMIN_PAGE_SIZE = 10;
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
 
     @Transactional(readOnly = true)
-    public List<ProductResponse> findAllActive(Long categoryId, String categorySlug, Boolean featured) {
-        List<Product> products;
-        if (categorySlug != null && !categorySlug.isBlank()) {
-            products = productRepository
-                    .findByActiveTrueAndCategorySlug(categorySlug.trim().toLowerCase(Locale.ROOT));
-        } else if (categoryId != null) {
-            products = productRepository.findByActiveTrueAndCategoryId(categoryId);
-        } else if (Boolean.TRUE.equals(featured)) {
-            products = productRepository.findByActiveTrueAndFeaturedTrue();
-        } else {
-            products = productRepository.findByActiveTrue();
-        }
-        return products.stream().map(productMapper::toResponse).toList();
+    public PageResponse<ProductResponse> searchCatalog(String categoria, String q, List<String> marcas,
+            Long min, Long max, boolean soloStock, String sort, int page, Integer size) {
+        Specification<Product> spec = buildSpec(true, categoria, q, marcas, min, max, soloStock, sort);
+        return toPage(productRepository.findAll(spec, pageable(page, size, CATALOG_PAGE_SIZE)));
     }
 
     @Transactional(readOnly = true)
-    public ProductResponse findActiveById(Long id) {
-        Product product = getProduct(id);
-        if (!Boolean.TRUE.equals(product.getActive())) {
-            throw notFound(id);
+    public List<ProductResponse> findFeatured() {
+        return productRepository.findByActiveTrueAndFeaturedTrueOrderByNameAsc().stream()
+                .map(productMapper::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> findBrands(String categoria) {
+        if (categoria == null || categoria.isBlank()) {
+            return productRepository.findActiveBrands();
         }
-        return productMapper.toResponse(product);
+        return productRepository.findActiveBrandsByCategorySlug(categoria.trim().toLowerCase(Locale.ROOT));
     }
 
     @Transactional(readOnly = true)
@@ -57,18 +65,16 @@ public class ProductService {
         String normalized = normalizeCode(code);
         return productRepository.findByCodeAndActiveTrue(normalized)
                 .map(productMapper::toResponse)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Producto no encontrado con código: " + normalized));
+                .orElseThrow(() -> notFound(normalized));
     }
 
-    @Transactional(readOnly = true)
-    public List<ProductResponse> findAll() {
-        return productRepository.findAll().stream().map(productMapper::toResponse).toList();
-    }
+    // admin
+
 
     @Transactional(readOnly = true)
-    public ProductResponse findById(Long id) {
-        return productMapper.toResponse(getProduct(id));
+    public PageResponse<ProductResponse> searchAdmin(String q, int page, Integer size) {
+        Specification<Product> spec = buildSpec(false, null, q, null, null, null, false, "nombre");
+        return toPage(productRepository.findAll(spec, pageable(page, size, ADMIN_PAGE_SIZE)));
     }
 
     @Transactional
@@ -91,31 +97,101 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductResponse update(Long id, ProductRequest request) {
-        Product product = getProduct(id);
+    public ProductResponse update(String code, ProductRequest request) {
+        Product product = getByCode(code);
 
         if (request.getVersion() != null && !request.getVersion().equals(product.getVersion())) {
             throw new ConflictException(
                     "El producto fue modificado por otra persona. Recarga e inténtalo de nuevo.");
         }
 
-        applyRequest(product, request); 
+        applyRequest(product, request);
         return productMapper.toResponse(productRepository.saveAndFlush(product));
     }
 
     @Transactional
-    public void delete(Long id) {
-        Product product = getProduct(id);
-        product.setActive(false);
-        productRepository.save(product);
+    public ProductResponse setActive(String code, boolean active) {
+        Product product = getByCode(code);
+        product.setActive(active);
+        return productMapper.toResponse(productRepository.saveAndFlush(product));
     }
 
-    private Product getProduct(Long id) {
-        return productRepository.findById(id).orElseThrow(() -> notFound(id));
+    private Specification<Product> buildSpec(boolean onlyActive, String categoria, String q,
+            List<String> marcas, Long min, Long max, boolean soloStock, String sort) {
+
+        return (root, query, cb) -> {
+            Expression<Long> effectivePrice = cb.coalesce(root.<Long>get("discountPrice"), root.<Long>get("price"));
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (onlyActive) {
+                predicates.add(cb.isTrue(root.get("active")));
+            }
+            if (categoria != null && !categoria.isBlank()) {
+                predicates.add(cb.equal(root.get("category").get("slug"),
+                        categoria.trim().toLowerCase(Locale.ROOT)));
+            }
+            if (q != null && !q.isBlank()) {
+                String pattern = "%" + q.trim().toLowerCase(Locale.ROOT) + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.<String>get("name")), pattern),
+                        cb.like(cb.lower(root.<String>get("brand")), pattern),
+                        cb.like(cb.lower(root.<String>get("model")), pattern),
+                        cb.like(cb.lower(root.<String>get("code")), pattern)));
+            }
+            if (marcas != null) {
+                List<String> brands = marcas.stream()
+                        .filter(b -> b != null && !b.isBlank())
+                        .map(b -> b.trim().toLowerCase(Locale.ROOT))
+                        .toList();
+                if (!brands.isEmpty()) {
+                    predicates.add(cb.lower(root.<String>get("brand")).in(brands));
+                }
+            }
+            if (min != null) {
+                predicates.add(cb.greaterThanOrEqualTo(effectivePrice, min));
+            }
+            if (max != null) {
+                predicates.add(cb.lessThanOrEqualTo(effectivePrice, max));
+            }
+            if (soloStock) {
+                predicates.add(cb.greaterThan(root.<Integer>get("stock"), 0));
+            }
+
+            if (query != null && !Long.class.equals(query.getResultType())
+                    && !long.class.equals(query.getResultType())) {
+                List<Order> orders = new ArrayList<>();
+                switch (sort == null ? "" : sort.trim().toLowerCase(Locale.ROOT)) {
+                    case "precio-asc" -> orders.add(cb.asc(effectivePrice));
+                    case "precio-desc" -> orders.add(cb.desc(effectivePrice));
+                    case "recientes" -> orders.add(cb.desc(root.get("createdAt")));
+                    default -> orders.add(cb.asc(cb.lower(root.<String>get("name"))));
+                }
+                orders.add(cb.asc(root.get("id")));
+                query.orderBy(orders);
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
-    private ResourceNotFoundException notFound(Long id) {
-        return new ResourceNotFoundException("Producto no encontrado con id: " + id);
+    private PageRequest pageable(int page, Integer size, int defaultSize) {
+        int s = (size == null) ? defaultSize : Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        return PageRequest.of(Math.max(page, 0), s);
+    }
+
+    private PageResponse<ProductResponse> toPage(Page<Product> result) {
+        List<ProductResponse> content = result.getContent().stream().map(productMapper::toResponse).toList();
+        return new PageResponse<>(content, result.getNumber(), result.getSize(),
+                result.getTotalElements(), result.getTotalPages());
+    }
+
+    private Product getByCode(String code) {
+        String normalized = normalizeCode(code);
+        return productRepository.findByCode(normalized).orElseThrow(() -> notFound(normalized));
+    }
+
+    private ResourceNotFoundException notFound(String code) {
+        return new ResourceNotFoundException("Producto no encontrado con código: " + code);
     }
 
     private String normalizeCode(String code) {
