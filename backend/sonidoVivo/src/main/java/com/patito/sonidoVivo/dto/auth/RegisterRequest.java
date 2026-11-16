@@ -22,7 +22,7 @@ public class RegisterRequest
 
     @NotBlank(message = "El teléfono es obligatorio.")
     @Pattern(regexp = "^\\d{9}$", message = "El teléfono debe tener exactamente 9 dígitos.")
-    @Schema(description = "Telefono", example = "9 1234 5678")
+    @Schema(description = "Telefono", example = "912345678")
     private String phone;
 
     @NotBlank(message = "El correo electrónico es obligatorio.")
