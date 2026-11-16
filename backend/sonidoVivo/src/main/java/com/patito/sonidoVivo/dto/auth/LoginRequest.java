@@ -10,13 +10,15 @@ import lombok.Setter;
 @Getter 
 @Setter 
 @NoArgsConstructor 
-@Schema 
+@Schema(title = "Login request", description = "Datos necesarios para iniciar sesión")
 public class LoginRequest 
 {
     @NotBlank(message = "El correo electrónico es obligatorio.")
     @Email(message = "Correo electrónico inválido.")
+    @Schema(description = "Correo electrónico", example = "Patito01@gmail.com")
     private String email;
 
     @NotBlank(message = "La contraseña es obligatoria.")
+    @Schema(description = "Contraseña", example = "Patito01!")
     private String password;
 }
