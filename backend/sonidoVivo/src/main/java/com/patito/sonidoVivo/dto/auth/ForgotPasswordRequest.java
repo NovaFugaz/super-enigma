@@ -9,11 +9,12 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@Schema
+@Schema(title = "Forgot Password Request", description = "Datos necesarios para recuperar la contraseña")
 @NoArgsConstructor 
 public class ForgotPasswordRequest
 {
     @NotBlank(message = "El correo electrónico es obligatorio.")
     @Email(message = "Correo electrónico inválido.")
+    @Schema(description = "Correo electrónico", example = "Patito01@gmail.com")
     private String email;
 }
