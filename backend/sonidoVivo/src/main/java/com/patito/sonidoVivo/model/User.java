@@ -1,87 +1,66 @@
 package com.patito.sonidoVivo.model;
 
-import java.time.LocalDateTime;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.patito.sonidoVivo.enums.UserRole;
+import com.patito.sonidoVivo.enums.Role;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "usuarios")
+@Table(name = "users",
+       uniqueConstraints = @UniqueConstraint(name = "uk_users_email", columnNames = "email"))
 @Getter
 @Setter
-public class User
-{
+@NoArgsConstructor
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "El nombre de usuario es obligatorio.")
-    @Size(max = 40, message = "El nombre de usuario no puede superar los 40 caracteres.")
-    @Column(nullable = false, length = 40)
-    private String username;
+    @NotBlank(message = "El nombre es obligatorio")
+    @Size(min = 2, max = 100, message = "El nombre debe tener entre 2 y 100 caracteres")
+    @Column(nullable = false, length = 100)
+    private String name;
 
-    @NotBlank(message = "El número de teléfono es obligatorio.")
-    @Pattern(regexp = "^\\d{9}$", message = "El teléfono debe tener exactamente 9 dígitos.")
-    @Column(nullable = false, length = 9)
+    @NotBlank(message = "El teléfono es obligatorio")
+    @Pattern(regexp = "^(\\+?56)?\\s?9\\s?\\d{4}\\s?\\d{4}$",
+             message = "Ingresa un celular chileno válido (ej: +56 9 1234 5678)")
+    @Size(max = 15, message = "El teléfono no puede superar los 15 caracteres")
+    @Column(length = 12)
     private String phone;
 
-    @NotBlank(message = "El correo electrónico es obligatorio.")
-    @Email(message = "Correo electrónico inválido.")
-    @Column(nullable = false, unique = true, length = 100)
+    @NotBlank(message = "El correo es obligatorio")
+    @Email(message = "El correo no tiene un formato válido")
+    @Size(max = 120, message = "El correo no puede superar los 120 caracteres")
+    @Column(nullable = false, length = 120)
     private String email;
 
     @JsonIgnore
-    @NotBlank(message = "La contraseña es obligatoria.")
-    @Column(name = "password_hash", nullable = false)
+    @NotBlank(message = "La contraseña es obligatoria")
+    @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
 
+    @NotNull(message = "El rol es obligatorio")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private UserRole rol;
+    private Role role = Role.CUSTOMER;
 
     @Column(nullable = false)
-    private Boolean active = true;
-
-    @Column(name = "reset_token_hash")
-    private String resetTokenHash;
-
-    @Column(name = "reset_token_expires_at")
-    private LocalDateTime resetTokenExpiresAt;
-
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    private LocalDateTime updatedAt;
+    private boolean active = true;
 
     @PrePersist
-    protected void onCreate()
-    {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = this.createdAt;
-    }
-
     @PreUpdate
-    protected void onUpdate()
-    {
-        this.updatedAt = LocalDateTime.now();
+    private void normalize() {
+        if (email != null) email = email.trim().toLowerCase();
+        if (name != null) name = name.trim();
+        if (phone != null) {
+            String digits = phone.replaceAll("\\D", "");
+            if (digits.length() == 9) digits = "56" + digits;
+            phone = "+" + digits;   // siempre queda +569XXXXXXXX
+        }
     }
-
 }

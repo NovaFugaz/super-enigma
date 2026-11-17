@@ -1,0 +1,15 @@
+package com.patito.sonidoVivo.dto.pedido;
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record OrderItemRequest(
+
+        @NotBlank(message = "El código del producto es obligatorio")
+        String code,
+
+        @NotNull(message = "La cantidad es obligatoria")
+        @Min(value = 1, message = "La cantidad mínima es 1")
+        Integer quantity
+) {}

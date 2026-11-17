@@ -1,36 +1,36 @@
 package com.patito.sonidoVivo.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "categorias")
+@Table(name = "categories")
 @Getter
 @Setter
-public class Category
-{
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@NoArgsConstructor
+public class Category {
 
-    @NotBlank(message = "El slug de la categoría es obligatorio.")
-    @Column(nullable = false, unique = true, length = 60)
+    @Id
+    @NotBlank(message = "El slug es obligatorio")
+    @Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*$",
+             message = "El slug solo admite minúsculas, números y guiones")
+    @Size(max = 60, message = "El slug no puede superar los 60 caracteres")
+    @Column(length = 60)
     private String slug;
 
-    @NotBlank(message = "El nombre de la categoría es obligatorio.")
+    @NotBlank(message = "El nombre es obligatorio")
+    @Size(max = 80, message = "El nombre no puede superar los 80 caracteres")
     @Column(nullable = false, length = 80)
     private String name;
 
-    @Column(length = 250)
+    @Size(max = 255, message = "La descripción no puede superar los 255 caracteres")
     private String description;
 
-    private String imageUrl;
-
+    @Size(max = 255, message = "La imagen no puede superar los 255 caracteres")
+    private String image;
 }
