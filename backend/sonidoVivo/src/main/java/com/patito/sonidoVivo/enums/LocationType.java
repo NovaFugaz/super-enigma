@@ -1,5 +1,5 @@
 package com.patito.sonidoVivo.enums;
 
-public enum LocationType {
+public enum LocationType  {
     STORE, PICKUP
 }
