@@ -1,7 +1,5 @@
 package com.patito.sonidoVivo.config;
 
-import java.util.Base64;
-
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -23,9 +21,9 @@ public class JwtConfig {
     private String issuer;
 
     private SecretKey key() {
-        byte[] bytes = Base64.getDecoder().decode(secret);
+        byte[] bytes = secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         if (bytes.length < 32) {
-            throw new IllegalStateException("JWT_SECRET debe tener al menos 256 bits (32 bytes)");
+            throw new IllegalStateException("JWT_SECRET debe tener al menos 32 caracteres");
         }
         return new SecretKeySpec(bytes, "HmacSHA256");
     }
@@ -46,8 +44,8 @@ public class JwtConfig {
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();
-        authorities.setAuthoritiesClaimName("roles"); 
-        authorities.setAuthorityPrefix("ROLE_"); 
+        authorities.setAuthoritiesClaimName("roles");
+        authorities.setAuthorityPrefix("ROLE_");
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(authorities);
         return converter;
