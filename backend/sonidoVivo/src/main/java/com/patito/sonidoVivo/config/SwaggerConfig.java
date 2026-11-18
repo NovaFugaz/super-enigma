@@ -11,19 +11,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SwaggerConfig {
 
-    private static final String SECURITY_SCHEME = "bearerAuth";
-
     @Bean
-    public OpenAPI sonidoVivoOpenAPI() {
+    public OpenAPI openAPI() {
         return new OpenAPI()
-                .info(new Info()
-                        .title("Sonido Vivo API")
-                        .description("Backend de Sonido Vivo: catálogo, pedidos, pagos y usuarios")
-                        .version("0.0.1"))
-                .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME))
-                .components(new Components().addSecuritySchemes(SECURITY_SCHEME,
+                .info(new Info().title("Sonido Vivo API").version("1.0"))
+                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
+                .components(new Components().addSecuritySchemes("bearerAuth",
                         new SecurityScheme()
-                                .name(SECURITY_SCHEME)
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")));
