@@ -33,44 +33,48 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
-                                           JwtAuthenticationConverter jwtConverter) throws Exception {
+            JwtAuthenticationConverter jwtConverter) throws Exception {
 
-        AuthenticationEntryPoint unauthorized = (req, res, ex) ->
-                writeError(res, 401, "Unauthorized", "Token ausente, inválido o vencido");
-        AccessDeniedHandler forbidden = (req, res, ex) ->
-                writeError(res, 403, "Forbidden", "No tienes permiso para esta acción");
+        AuthenticationEntryPoint unauthorized = (req, res, ex) -> writeError(res, 401, "Unauthorized",
+                "Token ausente, inválido o vencido");
+        AccessDeniedHandler forbidden = (req, res, ex) -> writeError(res, 403, "Forbidden",
+                "No tienes permiso para esta acción");
 
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .cors(Customizer.withDefaults())
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                //  Público 
-                .requestMatchers("/error", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/locations/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/orders/tracking/**").permitAll()
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // --- Público ---
+                        .requestMatchers("/error", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/locations/**")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/orders/tracking/**").permitAll()
 
-                //  Catálogo: vendedor ajusta stock; solo admin hace el resto del CRUD 
-                .requestMatchers(HttpMethod.PATCH, "/api/products/*/stock").hasAnyRole("SELLER", "ADMIN")
-                .requestMatchers("/api/products/**", "/api/categories/**", "/api/locations/**").hasRole("ADMIN")
+                        // --- Cliente ---
+                        .requestMatchers(HttpMethod.POST, "/api/orders").hasRole("CUSTOMER")
+                        .requestMatchers(HttpMethod.GET, "/api/orders/mine").hasRole("CUSTOMER")
 
-                //  Pedidos 
-                .requestMatchers(HttpMethod.POST, "/api/orders").hasRole("CUSTOMER")
-                .requestMatchers(HttpMethod.GET, "/api/orders/mine").hasRole("CUSTOMER")
-                .requestMatchers("/api/orders/**").hasAnyRole("SELLER", "ADMIN")
+                        // --- Staff: vendedor y admin ---
+                        .requestMatchers(HttpMethod.GET, "/api/staff/products/**").hasAnyRole("SELLER", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/staff/products/*/stock").hasAnyRole("SELLER", "ADMIN")
+                        .requestMatchers("/api/staff/orders/**").hasAnyRole("SELLER", "ADMIN")
 
-                //  Solo admin 
-                .requestMatchers("/api/users/**", "/api/reports/**").hasRole("ADMIN")
+                        // --- Staff: solo admin (POST, PUT, DELETE de productos y lo demás) ---
+                        .requestMatchers("/api/staff/**", "/api/users/**", "/api/reports/**").hasRole("ADMIN")
 
-                .anyRequest().authenticated())
-            .exceptionHandling(e -> e
-                .authenticationEntryPoint(unauthorized)
-                .accessDeniedHandler(forbidden))
-            .oauth2ResourceServer(oauth -> oauth
-                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter))
-                .authenticationEntryPoint(unauthorized)
-                .accessDeniedHandler(forbidden));
+                        // Cualquier otro método sobre el catálogo público queda bloqueado.
+                        .requestMatchers("/api/products/**", "/api/categories/**", "/api/locations/**").denyAll()
+
+                        .anyRequest().authenticated())
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(unauthorized)
+                        .accessDeniedHandler(forbidden))
+                .oauth2ResourceServer(oauth -> oauth
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter))
+                        .authenticationEntryPoint(unauthorized)
+                        .accessDeniedHandler(forbidden));
 
         return http.build();
     }
@@ -89,7 +93,7 @@ public class SecurityConfig {
     }
 
     private static void writeError(HttpServletResponse res, int status, String error,
-                                   String message) throws IOException {
+            String message) throws IOException {
         res.setStatus(status);
         res.setContentType("application/json;charset=UTF-8");
         res.getWriter().write("{\"status\":" + status + ",\"error\":\"" + error
