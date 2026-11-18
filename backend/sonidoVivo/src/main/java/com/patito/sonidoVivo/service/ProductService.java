@@ -1,18 +1,21 @@
 package com.patito.sonidoVivo.service;
 
+import java.util.List;
+import java.util.Locale;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.patito.sonidoVivo.dto.catalogo.ProductRequest;
 import com.patito.sonidoVivo.dto.catalogo.ProductResponse;
 import com.patito.sonidoVivo.model.Category;
 import com.patito.sonidoVivo.model.Product;
 import com.patito.sonidoVivo.repository.CategoryRepository;
 import com.patito.sonidoVivo.repository.ProductRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -38,12 +41,13 @@ public class ProductService {
 
     @Transactional
     public ProductResponse create(ProductRequest r) {
-        if (products.existsById(r.code())) {
+        String code = normalizeCode(r.code());
+        if (products.existsById(code)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Ya existe un producto con el código " + r.code());
+                    "Ya existe un producto con el código " + code);
         }
         Product p = new Product();
-        p.setCode(r.code());
+        p.setCode(code);
         apply(p, r);
         p.setActive(r.active() == null || r.active());
         return ProductResponse.from(products.saveAndFlush(p));
@@ -52,12 +56,19 @@ public class ProductService {
     @Transactional
     public ProductResponse update(String code, ProductRequest r) {
         Product p = find(code);
-        if (!p.getCode().equals(r.code())) {
+        if (!p.getCode().equals(normalizeCode(r.code()))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "El código del cuerpo no coincide con el de la URL");
         }
         apply(p, r);
         if (r.active() != null) p.setActive(r.active());
+        return ProductResponse.from(products.saveAndFlush(p));
+    }
+
+    @Transactional
+    public ProductResponse updateStock(String code, int stock) {
+        Product p = find(code);
+        p.setStock(stock);
         return ProductResponse.from(products.saveAndFlush(p));
     }
 
@@ -68,20 +79,13 @@ public class ProductService {
         products.save(p);
     }
 
-    @Transactional
-    public ProductResponse updateStock(String code, int stock) {
-        Product p = find(code);
-        p.setStock(stock);
-        return ProductResponse.from(products.saveAndFlush(p));
-    }
-
     private Product find(String code) {
-        return products.findWithCategory(code.trim().toUpperCase())
+        return products.findWithCategory(normalizeCode(code))
                 .orElseThrow(this::notFound);
     }
 
     private void apply(Product p, ProductRequest r) {
-        Category c = categories.findById(r.category()).orElseThrow(() ->
+        Category c = categories.findById(r.category().trim()).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "La categoría '" + r.category() + "' no existe"));
         p.setCategory(c);
@@ -92,6 +96,10 @@ public class ProductService {
         p.setStock(r.stock());
         p.setDescription(r.description());
         p.setImage(r.image());
+    }
+
+    private String normalizeCode(String code) {
+        return code.trim().toUpperCase(Locale.ROOT);
     }
 
     private ResponseStatusException notFound() {

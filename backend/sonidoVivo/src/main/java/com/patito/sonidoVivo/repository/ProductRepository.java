@@ -1,11 +1,10 @@
 package com.patito.sonidoVivo.repository;
 
-import com.patito.sonidoVivo.model.Product;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import com.patito.sonidoVivo.model.Product;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import java.util.List;
 import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, String> {
@@ -26,4 +25,9 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 
     @Query("select p from Product p join fetch p.category where p.code = :code")
     Optional<Product> findWithCategory(@Param("code") String code);
+           
+    List<Product> findAllByActiveTrueOrderByNameAsc();
+
+    List<Product> findAllByCategory_SlugAndActiveTrueOrderByNameAsc(String slug);
+           
 }
