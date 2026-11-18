@@ -6,5 +6,4 @@ import com.patito.sonidoVivo.model.Category;
 
 public interface CategoryRepository extends JpaRepository<Category, String> {
 
-
 }

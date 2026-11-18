@@ -5,122 +5,104 @@ import java.util.Locale;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.patito.sonidoVivo.dto.catalogo.ProductRequest;
 import com.patito.sonidoVivo.dto.catalogo.ProductResponse;
-import com.patito.sonidoVivo.dto.catalogo.ProductoActualizarRequest;
-import com.patito.sonidoVivo.dto.catalogo.StockRequest;
 import com.patito.sonidoVivo.model.Category;
 import com.patito.sonidoVivo.model.Product;
 import com.patito.sonidoVivo.repository.CategoryRepository;
 import com.patito.sonidoVivo.repository.ProductRepository;
+
 import lombok.RequiredArgsConstructor;
 
-@Service 
-@RequiredArgsConstructor 
+@Service
+@RequiredArgsConstructor
 public class ProductService {
-    
+
     private final ProductRepository products;
     private final CategoryRepository categories;
 
     @Transactional(readOnly = true)
-    public List<ProductResponse> findAllActive(String categorySlug) {
-        List<Product> result;
-
-        if (categorySlug == null || categorySlug.isBlank()) {
-            result = products.findAllByActiveTrueOrderByNameAsc();
-        } else {
-            result = products.findAllByCategory_SlugAndActiveTrueOrderByNameAsc(
-                    categorySlug.trim());
-        }
-
-        return result.stream().map(ProductResponse::from).toList();
+    public List<ProductResponse> list(String category, String q, boolean includeInactive) {
+        String cat = category == null ? "" : category.trim();
+        String text = q == null ? "" : q.trim().toLowerCase();
+        return products.search(cat, text, includeInactive).stream()
+                .map(ProductResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public ProductResponse findActiveByCode(String code) {
-        Product product = products.findById(normalizeCode(code))
-                .filter(Product::isActive)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Producto no encontrado"));
-
-        return ProductResponse.from(product);
+    public ProductResponse get(String code, boolean includeInactive) {
+        Product p = find(code);
+        if (!p.isActive() && !includeInactive) throw notFound();
+        return ProductResponse.from(p);
     }
 
     @Transactional
-    public ProductResponse create(ProductRequest request) {
-        String code = normalizeCode(request.code());
-
+    public ProductResponse create(ProductRequest r) {
+        String code = normalizeCode(r.code());
         if (products.existsById(code)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "El código del producto ya existe");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ya existe un producto con el código " + code);
         }
-
-        Category category = findCategoryOrThrow(request.category());
-
-        Product product = new Product();
-        product.setCode(code);
-        product.setCategory(category);
-        product.setName(request.name());
-        product.setBrand(request.brand());
-        product.setModel(request.model());
-        product.setPrice(request.price());
-        product.setStock(request.stock());
-        product.setDescription(request.description());
-        product.setImage(request.image());
-        product.setActive(request.active() == null || request.active());
-
-        return ProductResponse.from(products.save(product));
+        Product p = new Product();
+        p.setCode(code);
+        apply(p, r);
+        p.setActive(r.active() == null || r.active());
+        return ProductResponse.from(products.saveAndFlush(p));
     }
 
     @Transactional
-    public ProductResponse update(String code, ProductoActualizarRequest request) {
-        Product product = findByCodeOrThrow(code);
-        Category category = findCategoryOrThrow(request.categoriaSlug());
-
-        product.setCategory(category);
-        product.setName(request.nombre());
-        product.setBrand(request.marca());
-        product.setModel(request.modelo());
-        product.setPrice(request.precio());
-        product.setStock(request.stock());
-        product.setDescription(request.descripcion());
-        product.setImage(request.imagen());
-        product.setActive(request.activo());
-
-        return ProductResponse.from(products.save(product));
+    public ProductResponse update(String code, ProductRequest r) {
+        Product p = find(code);
+        if (!p.getCode().equals(normalizeCode(r.code()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El código del cuerpo no coincide con el de la URL");
+        }
+        apply(p, r);
+        if (r.active() != null) p.setActive(r.active());
+        return ProductResponse.from(products.saveAndFlush(p));
     }
 
     @Transactional
-    public ProductResponse updateStock(String code, StockRequest request) {
-        Product product = findByCodeOrThrow(code);
-        product.setStock(request.stock());
-
-        return ProductResponse.from(products.save(product));
+    public ProductResponse updateStock(String code, int stock) {
+        Product p = find(code);
+        p.setStock(stock);
+        return ProductResponse.from(products.saveAndFlush(p));
     }
 
     @Transactional
     public void deactivate(String code) {
-        Product product = findByCodeOrThrow(code);
-        product.setActive(false);
-        products.save(product);
+        Product p = find(code);
+        p.setActive(false);
+        products.save(p);
     }
 
-    private Product findByCodeOrThrow(String code) {
-        return products.findById(normalizeCode(code))
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Producto no encontrado"));
+    private Product find(String code) {
+        return products.findWithCategory(normalizeCode(code))
+                .orElseThrow(this::notFound);
     }
 
-    private Category findCategoryOrThrow(String slug) {
-        return categories.findById(slug.trim())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Categoría no encontrada"));
+    private void apply(Product p, ProductRequest r) {
+        Category c = categories.findById(r.category().trim()).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "La categoría '" + r.category() + "' no existe"));
+        p.setCategory(c);
+        p.setName(r.name());
+        p.setBrand(r.brand());
+        p.setModel(r.model());
+        p.setPrice(r.price());
+        p.setStock(r.stock());
+        p.setDescription(r.description());
+        p.setImage(r.image());
     }
 
     private String normalizeCode(String code) {
         return code.trim().toUpperCase(Locale.ROOT);
     }
-}
 
+    private ResponseStatusException notFound() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado");
+    }
+}
