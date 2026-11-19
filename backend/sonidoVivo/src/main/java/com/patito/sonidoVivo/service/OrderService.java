@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.patito.sonidoVivo.dto.pedido.OrderCreateRequest;
+import com.patito.sonidoVivo.dto.pedido.OrderMineResponse;
 import com.patito.sonidoVivo.dto.pedido.OrderResponse;
 import com.patito.sonidoVivo.dto.pedido.OrderStatusRequest;
 import com.patito.sonidoVivo.dto.pedido.OrderTrackingResponse;
@@ -134,13 +135,13 @@ public class OrderService {
 
     // Este método es para que un cliente pueda consultar sus pedidos, pero no puede ver los detalles de pago ni envío
     @Transactional(readOnly = true)
-    public List<OrderResponse> findMine(String customerSubject) {
+    public List<OrderMineResponse> findMine(String customerSubject) {
         User customer = activeUser(customerSubject);
         if (customer.getRole() != Role.CUSTOMER) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo un cliente puede consultar sus pedidos");
         }
         return orders.findAllByCustomer_IdOrderByCreatedAtDesc(customer.getId()).stream()
-                .map(OrderResponse::from)
+                .map(OrderMineResponse::from)
                 .toList();
     }
 

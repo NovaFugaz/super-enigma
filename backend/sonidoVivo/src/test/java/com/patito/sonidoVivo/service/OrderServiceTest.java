@@ -234,6 +234,9 @@ class OrderServiceTest {
         var response = orderService.findMine("7");
 
         assertEquals(List.of("SV-MINE"), response.stream().map(order -> order.id()).toList());
+        assertEquals(List.of("id", "trackingNumber", "status", "createdAt", "items", "total", "statusHistory"),
+                java.util.Arrays.stream(response.getFirst().getClass().getRecordComponents())
+                        .map(component -> component.getName()).toList());
         verify(orders).findAllByCustomer_IdOrderByCreatedAtDesc(7L);
     }
 

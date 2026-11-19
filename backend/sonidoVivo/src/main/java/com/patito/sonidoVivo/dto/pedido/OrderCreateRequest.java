@@ -60,7 +60,7 @@ public record OrderCreateRequest(
             @Size(max = 40, message = "El punto de retiro no es válido")
             @Schema(
                     description = "Identificador del punto de retiro (obligatorio cuando method es RETIRO)",
-                    example = "sucursal-vina",
+                    example = "tienda",
                     nullable = true
             )
             String pickupId

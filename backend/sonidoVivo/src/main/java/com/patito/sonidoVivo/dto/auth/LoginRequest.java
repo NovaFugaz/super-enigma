@@ -9,10 +9,10 @@ public record LoginRequest(
 
         @NotBlank(message = "El correo es obligatorio")
         @Email(message = "El correo no tiene un formato válido")
-        @Schema(description = "Correo electrónico", example = "Cliente01@gmail.com")
+        @Schema(description = "Correo electrónico de la cuenta demo de cliente", example = "cliente@sonidovivo.cl")
         String email,
 
         @NotBlank(message = "La contraseña es obligatoria")
-        @Schema(description = "Contraseña", example = "Cliente01!")
+        @Schema(description = "Contraseña de la cuenta demo de cliente", example = "Cliente123!")
         String password
 ) {}

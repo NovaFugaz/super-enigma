@@ -13,7 +13,7 @@ public record OrderItemRequest(
         @NotBlank(message = "El código del producto es obligatorio")
         @Size(max = 20, message = "El código no puede superar los 20 caracteres")
         @Schema(description = "Código único del producto (SKU) a agregar al pedido",
-                example = "GTR-GIB-001")
+                example = "GA001")
         String code,
 
         @NotNull(message = "La cantidad es obligatoria")

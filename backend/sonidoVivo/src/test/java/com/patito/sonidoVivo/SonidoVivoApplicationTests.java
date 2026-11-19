@@ -134,7 +134,12 @@ class SonidoVivoApplicationTests {
 		assertEquals(24_990, response.total());
 		assertEquals(3, products.findById(product.getCode()).orElseThrow().getStock());
 		assertNotNull(orders.findByTrackingNumber(response.trackingNumber()).orElseThrow());
-		assertEquals(1, orderService.findMine(customer.getId().toString()).size());
+		var myOrders = orderService.findMine(customer.getId().toString());
+		assertEquals(1, myOrders.size());
+		assertEquals(response.id(), myOrders.getFirst().id());
+		assertEquals(response.total(), myOrders.getFirst().total());
+		assertEquals(List.of("PENDIENTE", "EN_PROCESO"),
+				myOrders.getFirst().statusHistory().stream().map(update -> update.status().name()).toList());
 		assertEquals(2, response.statusHistory().size());
 
 		var updated = orderService.updateStatus(response.id(),
