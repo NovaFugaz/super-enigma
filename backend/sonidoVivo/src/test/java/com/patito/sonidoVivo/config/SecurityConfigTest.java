@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -27,9 +28,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.patito.sonidoVivo.controller.AdminController;
+import com.patito.sonidoVivo.controller.OrderController;
+import com.patito.sonidoVivo.controller.StaffOrderController;
+import com.patito.sonidoVivo.service.OrderService;
 import com.patito.sonidoVivo.service.UserService;
 
-@WebMvcTest(controllers = AdminController.class)
+@WebMvcTest(controllers = { AdminController.class, OrderController.class, StaffOrderController.class })
 @Import({ SecurityConfig.class, SecurityConfigTest.JwtTestConfiguration.class })
 class SecurityConfigTest {
 
@@ -38,6 +42,9 @@ class SecurityConfigTest {
 
     @MockitoBean
     private UserService userService;
+
+    @MockitoBean
+    private OrderService orderService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -94,10 +101,35 @@ class SecurityConfigTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void customerCanAccessOwnOrdersButNotStaffOrderRoutes() throws Exception {
+        when(orderService.findMine("7")).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/orders/mine").header("Authorization", "Bearer customer-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+        mockMvc.perform(get("/api/staff/orders").header("Authorization", "Bearer customer-token"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void sellerCanAccessStaffOrderRoutesButCannotCreateCustomerOrder() throws Exception {
+        when(orderService.findAllForStaff()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/staff/orders").header("Authorization", "Bearer seller-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+        mockMvc.perform(post("/api/orders").header("Authorization", "Bearer seller-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
     private static Jwt jwt(String role) {
         Instant now = Instant.now();
         return Jwt.withTokenValue(role.toLowerCase() + "-token")
                 .header("alg", "none")
+                .subject("7")
                 .issuedAt(now)
                 .expiresAt(now.plusSeconds(60))
                 .claim("roles", List.of(role))
