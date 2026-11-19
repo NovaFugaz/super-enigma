@@ -16,6 +16,8 @@ import com.patito.sonidoVivo.dto.pedido.OrderStatusRequest;
 import com.patito.sonidoVivo.service.OrderService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +25,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/staff/orders")
 @RequiredArgsConstructor
-@Tag(name = "Pedidos (staff)")
+@Tag(name = "Pedidos (staff)", description = "Gestión interna de pedidos")
 public class StaffOrderController {
 
     private final OrderService orderService;
@@ -36,15 +38,19 @@ public class StaffOrderController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Consultar pedido por id para staff")
+    @ApiResponse(responseCode = "404", description = "Pedido no encontrado")
     public OrderResponse get(@PathVariable String id) {
         return orderService.findForStaff(id);
     }
 
     @PatchMapping("/{id}/status")
     @Operation(summary = "Actualizar estado del pedido y registrar el actor")
-    public OrderResponse updateStatus(@PathVariable String id,
+    @ApiResponse(responseCode = "400", description = "Estado inválido")
+    @ApiResponse(responseCode = "404", description = "Pedido no encontrado")
+    public OrderResponse updateStatus(
+            @PathVariable String id,
             @Valid @RequestBody OrderStatusRequest request,
-            @AuthenticationPrincipal Jwt jwt) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
         return orderService.updateStatus(id, request, jwt.getSubject());
     }
 }
