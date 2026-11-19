@@ -5,7 +5,7 @@ import com.patito.sonidoVivo.model.User;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(title = "User Response")
+@Schema(title = "User Response", description = "Representa la información pública de un usuario registrado")
 public record UserResponse(
 
         @Schema(description = "Id del usuario", example = "1")
