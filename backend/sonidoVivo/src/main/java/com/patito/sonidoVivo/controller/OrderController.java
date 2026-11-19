@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.patito.sonidoVivo.dto.pedido.OrderCreateRequest;
+import com.patito.sonidoVivo.dto.pedido.OrderMineResponse;
 import com.patito.sonidoVivo.dto.pedido.OrderResponse;
 import com.patito.sonidoVivo.dto.pedido.OrderTrackingResponse;
 import com.patito.sonidoVivo.service.OrderService;
@@ -42,7 +43,7 @@ public class OrderController {
 
     @GetMapping("/mine")
     @Operation(summary = "Listar pedidos del cliente autenticado")
-    public List<OrderResponse> mine(@AuthenticationPrincipal Jwt jwt) {
+    public List<OrderMineResponse> mine(@AuthenticationPrincipal Jwt jwt) {
         return orderService.findMine(jwt.getSubject());
     }
 
