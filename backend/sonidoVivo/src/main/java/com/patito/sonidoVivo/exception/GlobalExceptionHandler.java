@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> unreadable(HttpMessageNotReadableException ex,
                                                HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST,
-                "JSON mal formado o valor no permitido (los roles y estados van en minúscula)",
+                "JSON mal formateado o valor no permitido; revise los valores válidos de los enums",
                 req, null);
     }
 
