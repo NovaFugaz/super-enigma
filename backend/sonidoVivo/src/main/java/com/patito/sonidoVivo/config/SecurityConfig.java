@@ -1,6 +1,7 @@
 package com.patito.sonidoVivo.config;
 
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -20,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -82,9 +84,16 @@ public class SecurityConfig {
 
     /** Permite que React llame al backend. */
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(
+        // Lee la lista de orígenes permitidos desde application.properties
+        // CORS es un mecanismo de seguridad que restringe las solicitudes HTTP entre dominios.
+        // Lo estamos usando para que el front le pueda hacer llamadas al back, pero solo al front que se le permite.
+            @Value("${app.cors.allowed-origins}") String allowedOrigins) {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 

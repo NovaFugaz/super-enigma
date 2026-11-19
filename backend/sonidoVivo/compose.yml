@@ -1,0 +1,45 @@
+services:
+  db:
+    image: mysql:8.4
+    mem_limit: ${MYSQL_MEMORY_LIMIT:-768m}
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-sonidovivo}
+      MYSQL_USER: ${MYSQL_USER:-sonidovivo}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sonidovivo-local}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root-local-only}
+    command:
+      - --innodb-buffer-pool-size=128M
+      - --max-connections=40
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-768m}
+    environment:
+      DB_URL: jdbc:mysql://db:3306/${MYSQL_DATABASE:-sonidovivo}?createDatabaseIfNotExist=true&serverTimezone=UTC
+      DB_USER: ${MYSQL_USER:-sonidovivo}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-sonidovivo-local}
+      JWT_SECRET: ${JWT_SECRET:-SonidoVivoSoloLaboratorioClaveSecretaDeEjemploMuyLarga12345}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=20.0 -XX:+UseSerialGC}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
