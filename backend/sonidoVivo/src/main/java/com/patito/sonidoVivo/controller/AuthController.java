@@ -12,6 +12,7 @@ import com.patito.sonidoVivo.dto.auth.LoginRequest;
 import com.patito.sonidoVivo.dto.auth.RegisterRequest;
 import com.patito.sonidoVivo.service.AuthService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -29,6 +30,9 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Iniciar sesión",
+            description = "Para la demostración local, usa cliente@sonidovivo.cl / Cliente123!. "
+                    + "Copia el token recibido en Authorize para probar operaciones de cliente.")
     @ResponseStatus(HttpStatus.CREATED)
     public AuthResponse login(@Valid @RequestBody LoginRequest request){
         return authService.login(request);
