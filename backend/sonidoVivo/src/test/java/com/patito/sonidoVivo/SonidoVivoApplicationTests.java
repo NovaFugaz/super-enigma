@@ -15,14 +15,18 @@ import com.patito.sonidoVivo.dto.pedido.OrderCreateRequest;
 import com.patito.sonidoVivo.dto.pedido.OrderCreateRequest.ShippingRequest;
 import com.patito.sonidoVivo.dto.pedido.OrderItemRequest;
 import com.patito.sonidoVivo.dto.pedido.OrderStatusRequest;
+import com.patito.sonidoVivo.enums.LocationType;
 import com.patito.sonidoVivo.enums.OrderStatus;
 import com.patito.sonidoVivo.enums.Role;
 import com.patito.sonidoVivo.enums.ShippingMethod;
 import com.patito.sonidoVivo.model.Category;
+import com.patito.sonidoVivo.model.Location;
 import com.patito.sonidoVivo.model.Product;
 import com.patito.sonidoVivo.model.User;
+import com.patito.sonidoVivo.config.DemoCatalogSeeder;
 import com.patito.sonidoVivo.repository.CategoryRepository;
 import com.patito.sonidoVivo.repository.CustomerOrderRepository;
+import com.patito.sonidoVivo.repository.LocationRepository;
 import com.patito.sonidoVivo.repository.ProductRepository;
 import com.patito.sonidoVivo.repository.UserRepository;
 import com.patito.sonidoVivo.service.OrderService;
@@ -50,8 +54,36 @@ class SonidoVivoApplicationTests {
 	@Autowired
 	private CustomerOrderRepository orders;
 
+	@Autowired
+	private LocationRepository locations;
+
+	@Autowired
+	private DemoCatalogSeeder demoCatalogSeeder;
+
 	@Test
 	void contextLoads() {
+	}
+
+	@Test
+	@Transactional
+	void loadsProvidedCatalogAndPickupLocationsIdempotently() throws Exception {
+		assertEquals(10, categories.count());
+		assertEquals(51, products.count());
+		assertEquals(3, locations.count());
+		assertEquals("tienda", locations.findById("tienda").orElseThrow().getId());
+		assertEquals(LocationType.STORE, locations.findById("tienda").orElseThrow().getType());
+		assertEquals(LocationType.PICKUP, locations.findById("retiro-centro").orElseThrow().getType());
+		assertEquals(LocationType.PICKUP, locations.findById("retiro-chile").orElseThrow().getType());
+
+		Product guitar = products.findById("GA001").orElseThrow();
+		guitar.setStock(1);
+		products.saveAndFlush(guitar);
+		demoCatalogSeeder.seed();
+
+		assertEquals(10, categories.count());
+		assertEquals(51, products.count());
+		assertEquals(3, locations.count());
+		assertEquals(1, products.findById("GA001").orElseThrow().getStock());
 	}
 
 	@Test
