@@ -63,6 +63,7 @@ public class SecurityConfig {
 
                         // --- Staff: solo admin (POST, PUT, DELETE de productos y lo demás) ---
                         .requestMatchers("/api/staff/**", "/api/users/**", "/api/reports/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         // Cualquier otro método sobre el catálogo público queda bloqueado.
                         .requestMatchers("/api/products/**", "/api/categories/**", "/api/locations/**").denyAll()
