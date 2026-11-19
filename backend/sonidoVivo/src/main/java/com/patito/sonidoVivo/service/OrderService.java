@@ -64,7 +64,8 @@ public class OrderService {
         Location pickup = null;
         if (request.shipping().method() == ShippingMethod.RETIRO) {
             pickup = locations.findById(request.shipping().pickupId().trim())
-                    .filter(location -> location.getType() == LocationType.PICKUP)
+                    .filter(location -> location.getType() == LocationType.PICKUP
+                            || location.getType() == LocationType.STORE)
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.BAD_REQUEST, "El punto de retiro no existe o no está disponible"));
         }

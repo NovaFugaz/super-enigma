@@ -157,19 +157,23 @@ class OrderServiceTest {
     }
 
     @Test
-    void requiresPickupLocationOfPickupType() {
+    void allowsStoreAsPickupLocation() {
         stubCustomer();
+        stubOrderSaving();
         Location location = new Location();
-        location.setId("retiro-vina");
+        location.setId("tienda");
         location.setType(LocationType.STORE);
-        when(locations.findById("retiro-vina")).thenReturn(Optional.of(location));
+        location.setName("Sonido Vivo - Tienda");
+        location.setAddress("Av. Valparaíso 581");
+        when(locations.findById("tienda")).thenReturn(Optional.of(location));
+        when(products.findByCodeForUpdate("GA001")).thenReturn(Optional.of(product("GA001", 10_000, 5)));
 
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> orderService.create(request(ShippingMethod.RETIRO, null, "retiro-vina",
-                        List.of(new OrderItemRequest("GA001", 1)), true), "7"));
+        var response = orderService.create(request(ShippingMethod.RETIRO, null, "tienda",
+                List.of(new OrderItemRequest("GA001", 1)), true), "7");
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        verify(orders, never()).saveAndFlush(any(CustomerOrder.class));
+        assertEquals("Sonido Vivo - Tienda", response.shipping().pickup().name());
+        assertEquals(0, response.shippingCost());
+        verify(orders).saveAndFlush(any(CustomerOrder.class));
     }
 
     @Test
