@@ -23,6 +23,11 @@ public class DatosDemo {
         };
     }
 
+    @Bean
+    CommandLineRunner cargarCatalogoDemo(DemoCatalogSeeder seeder) {
+        return args -> seeder.seed();
+    }
+
     /** Solo crea la cuenta si el correo aún no existe, así no se duplica al reiniciar. */
     private void crear(UserRepository users, UserService userService, String name,
                        String phone, String email, String password, Role role) {
