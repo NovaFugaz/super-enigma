@@ -6,6 +6,8 @@ import com.patito.sonidoVivo.model.Product;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.Optional;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 
 public interface ProductRepository extends JpaRepository<Product, String> {
 
@@ -25,6 +27,11 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 
     @Query("select p from Product p join fetch p.category where p.code = :code")
     Optional<Product> findWithCategory(@Param("code") String code);
+
+    // Pessimistic para que no se pueda actualizar el producto mientras se está procesando el pedido
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Product p where p.code = :code")
+    Optional<Product> findByCodeForUpdate(@Param("code") String code);
            
     List<Product> findAllByActiveTrueOrderByNameAsc();
 
