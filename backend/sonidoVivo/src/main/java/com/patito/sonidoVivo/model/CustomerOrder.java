@@ -11,6 +11,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.data.domain.Persistable;
+
 import com.patito.sonidoVivo.enums.OrderStatus;
 import com.patito.sonidoVivo.enums.ShippingMethod;
 
@@ -20,9 +22,9 @@ import com.patito.sonidoVivo.enums.ShippingMethod;
 @Getter
 @Setter
 @NoArgsConstructor
-public class CustomerOrder {
+public class CustomerOrder implements Persistable<String> {
 
-    /** Lo asigna el servicio, igual que el frontend: "SV-" + timestamp. */
+    /** El servicio asigna el identificador con prefijo SV-. */
     @Id
     @NotBlank(message = "El id del pedido es obligatorio")
     @Size(max = 30, message = "El id del pedido no puede superar los 30 caracteres")
@@ -92,18 +94,33 @@ public class CustomerOrder {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Transient
+    private boolean newEntity = true;
+
     @NotEmpty(message = "El pedido debe tener al menos un producto")
-    @Valid
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItem> items = new ArrayList<>();
+    private List<@Valid OrderItem> items = new ArrayList<>();
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("createdAt ASC")
+    @OrderBy("createdAt ASC, id ASC")
     private List<OrderStatusHistory> statusHistory = new ArrayList<>();
 
     @PrePersist
     private void beforeSave() {
         if (createdAt == null) createdAt = Instant.now();
+    }
+
+    // Esto es para que JPA pueda determinar si la entidad es nueva o no.
+    // Esto porque el id lo está asignando el service.
+    @Override
+    public boolean isNew() {
+        return newEntity;
+    }
+
+    @PostPersist
+    @PostLoad
+    private void markNotNew() {
+        newEntity = false;
     }
 
     public void addItem(OrderItem item) {
