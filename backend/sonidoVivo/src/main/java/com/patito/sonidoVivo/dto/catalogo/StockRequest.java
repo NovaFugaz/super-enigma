@@ -9,6 +9,6 @@ public record StockRequest(
 
         @NotNull(message = "El stock es obligatorio")
         @PositiveOrZero(message = "El stock debe ser un entero mayor o igual a cero")
-        @Schema(description = "Stock de un producto")
+        @Schema(description = "Stock de un producto", example = "10")
         Integer stock
 ) {}

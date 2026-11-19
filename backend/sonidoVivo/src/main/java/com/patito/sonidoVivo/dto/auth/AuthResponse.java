@@ -8,9 +8,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record AuthResponse(
         @Schema(description = "Token JWT", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..")
         String token,
+
+        @Schema(description = "Tipo de token de autenticación", example = "Bearer", defaultValue = "Bearer")
         String type,
 
-        @Schema(description = "Bearer")
+        @Schema(description = "Tiempo de expiración del token en milisegundos")
         long expiresInMs,
 
         @Schema(description = "Información del usuario autenticado")

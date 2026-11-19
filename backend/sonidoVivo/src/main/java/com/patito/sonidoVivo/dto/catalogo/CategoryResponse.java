@@ -4,13 +4,13 @@ import com.patito.sonidoVivo.model.Category;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(title = "Categoria", description = "Respuesta de las categorías de productos")
+@Schema(title = "Categoria", description = "Respuesta de las categorías públicas de productos")
 public record CategoryResponse(
 
-        @Schema(description = "Slug")
+        @Schema(description = "Identificardor únicco legible en URL", example = "guitarras-electricas")
         String slug,
 
-        @Schema(description = "Nombre de la categoría")
+        @Schema(description = "Nombre de la categoría", example = "Guitarras electricas")
         String name,
 
         @Schema(description = "Descripción de categoría")

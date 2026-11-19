@@ -12,34 +12,34 @@ public record ProductRequest(
         @Pattern(regexp = Patterns.PRODUCT_CODE,
                  message = "El código solo admite mayúsculas, números y guiones")
         @Size(max = 20, message = "El código no puede superar los 20 caracteres")
-        @Schema(description = "Codigo", example = "049000006346")
+        @Schema(description = "Codigo del producto", example = "GTR-GIB-001")
         String code,
 
         @NotBlank(message = "La categoría es obligatoria")
-        @Schema(description = "La categoría es obligatoria", example = "Bateria")
+        @Schema(description = "La categoría es obligatoria", example = "guitarras")
         String category,
 
         @NotBlank(message = "El nombre es obligatorio")
         @Size(max = 120, message = "El nombre no puede superar los 120 caracteres")
-        @Schema(description = "Nombre del producto", example = "Guitarra acustica - ProMax")
+        @Schema(description = "Nombre del producto", example = "Guitarra acustica ProMax")
         String name,
 
         @Size(max = 60, message = "La marca no puede superar los 60 caracteres")
-        @Schema(description = "Marca del producto", example = "Gibson")
+        @Schema(description = "Marca fabricante del producto", example = "Gibson")
         String brand,
 
         @Size(max = 60, message = "El modelo no puede superar los 60 caracteres")
-        @Schema(description = "Modelo del producto", example = "Guitarra Clásica")
+        @Schema(description = "Modelo especifico del producto", example = "J-45 Standard")
         String model,
 
         @NotNull(message = "El precio es obligatorio")
         @PositiveOrZero(message = "El precio no puede ser negativo")
-        @Schema(description = "Precio de un producto")
+        @Schema(description = "Precio de un producto (CLP)", example = "250000")
         Integer price,
 
         @NotNull(message = "El stock es obligatorio")
         @PositiveOrZero(message = "El stock no puede ser negativo")
-        @Schema(description = "Stock disponible de un producto", example = "10")
+        @Schema(description = "Cantidad de unidades disponible de un producto", example = "10")
         Integer stock,
 
         @Size(max = 500, message = "La descripción no puede superar los 500 caracteres")
@@ -50,6 +50,7 @@ public record ProductRequest(
         @Schema(description = "Imagen de un producto")
         String image,
 
+        @Schema(description = "Indica si el estado del producto", example = "true")
         Boolean active
 ) {
     public ProductRequest {
