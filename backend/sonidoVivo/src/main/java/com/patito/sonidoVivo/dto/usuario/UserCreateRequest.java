@@ -3,18 +3,22 @@ package com.patito.sonidoVivo.dto.usuario;
 import com.patito.sonidoVivo.dto.common.Patterns;
 import com.patito.sonidoVivo.enums.Role;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 
+@Schema(title = "User Create Request", description = "Datos requeridos para crear un nuevo usuario")
 public record UserCreateRequest(
 
         @NotBlank(message = "El nombre es obligatorio")
         @Size(min = 2, max = 100, message = "El nombre debe tener entre 2 y 100 caracteres")
+        @Schema(description = "Nombre de usuario", example = "Alan Brito")
         String name,
 
         @NotBlank(message = "El teléfono es obligatorio")
         @Pattern(regexp = Patterns.PHONE_CL,
-                 message = "Ingresa un celular chileno válido (ej: +56 9 1234 5678)")
+                 message = "Ingresa un celular chileno válido")
         @Size(max = 15, message = "El teléfono no puede superar los 15 caracteres")
+        @Schema(description = "Teléfono", example = "+56 9 1234 5678")
         String phone,
 
         @NotBlank(message = "El correo es obligatorio")
@@ -24,8 +28,10 @@ public record UserCreateRequest(
 
         @NotBlank(message = "La contraseña es obligatoria")
         @Size(min = 8, max = 72, message = "La contraseña debe tener entre 8 y 72 caracteres")
+        @Schema(description = "Correo electrónico", example = "Cliente01@gmail.com")
         String password,
 
         @NotNull(message = "El rol es obligatorio")
+        @Schema(description = "Rol asignado al usuario", example = "SELLER", allowableValues = "CUSTOMER/ADMIN/SELLER")
         Role role
 ) {}
