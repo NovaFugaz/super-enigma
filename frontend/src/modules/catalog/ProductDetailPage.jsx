@@ -122,8 +122,21 @@ function ProductDetail({ product, products, categories }) {
 
 export default function ProductDetailPage() {
     const { codigo } = useParams()
-    const { products, categories } = useCatalog()
+    const { products, categories, loading, error, reload } = useCatalog()
     const product = products.find((item) => item.codigo === codigo)
+
+    if (loading) {
+        return <div className="page-container py-16" role="status">Cargando producto</div>
+    }
+
+    if (error) {
+        return (
+            <div className="page-container py-16" role="alert">
+                No pudimos cargar este producto por el momento. Inténtalo nuevamente: {error}
+                <button type="button" className="btn-outline ml-3" onClick={reload}>Reintentar</button>
+            </div>
+        )
+    }
 
     if (!product) {
         return (
