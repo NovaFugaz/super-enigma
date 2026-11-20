@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth.js'
 import { apiRequest, ApiError } from '../services/api.js'
 import { loginAccount, registerAccount } from '../services/authApi.js'
 import { fetchProducts, toCatalogProduct } from '../services/catalogApi.js'
+import { createPaidOrder, fetchMyOrders, trackOrder } from '../services/orderApi.js'
 import { confirmPasswordReset, requestPasswordReset } from '../services/passwordResetApi.js'
 
 describe('backend API integration services', () => {
@@ -183,5 +184,95 @@ describe('backend API integration services', () => {
         JSON.stringify({ token: 'one-time-token', newPassword: 'NewPassword123!' }),
       ],
     ])
+  })
+
+  it('creates an order using only the delivery choice and product quantities', async () => {
+    const response = {
+      id: 'SV-123',
+      trackingNumber: 'TRK-123',
+      status: 'EN_PROCESO',
+      createdAt: '2026-10-13T00:00:00.000Z',
+      customerId: 8,
+      customerName: 'Cliente Demo',
+      customerEmail: 'cliente@example.cl',
+      shipping: { method: 'DOMICILIO', address: 'Calle 123', pickup: null },
+      items: [{
+        code: 'GA001',
+        name: 'Guitarra demo',
+        brand: 'Yamaha',
+        model: 'F310',
+        unitPrice: 129990,
+        quantity: 1,
+        lineTotal: 129990,
+      }],
+      subtotal: 129990,
+      tax: 20713,
+      shippingCost: 4990,
+      total: 134980,
+      payment: { status: 'aprobado', transactionId: 'PAY-123', authorizationCode: 'AUTH-123' },
+      receipt: { number: 'BOL-SV-123', issuedAt: '2026-10-13T00:00:00.000Z' },
+      statusHistory: [{
+        from: 'PENDIENTE',
+        status: 'EN_PROCESO',
+        actorName: null,
+        createdAt: '2026-10-13T00:00:00.000Z',
+      }],
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(response), { status: 201 })))
+
+    const order = await createPaidOrder({
+      shipping: { method: 'DOMICILIO', address: 'Calle 123', pickupId: null },
+      items: [{ code: 'GA001', quantity: 1 }],
+      paymentApproved: true,
+    })
+
+    expect(fetch.mock.calls[0][1].body).toBe(JSON.stringify({
+      shipping: { method: 'DOMICILIO', address: 'Calle 123', pickupId: null },
+      items: [{ code: 'GA001', quantity: 1 }],
+      paymentApproved: true,
+    }))
+    expect(order).toMatchObject({
+      id: 'SV-123',
+      status: 'en_proceso',
+      customerId: '8',
+      total: 134980,
+      shipping: { method: 'domicilio', address: 'Calle 123' },
+      statusHistory: [{ from: 'pendiente', status: 'en_proceso' }],
+    })
+  })
+
+  it('loads customer orders and tracks by order ID with normalized backend statuses', async () => {
+    const summary = {
+      id: 'SV-123',
+      trackingNumber: 'TRK-123',
+      status: 'EN_PROCESO',
+      createdAt: '2026-10-13T00:00:00.000Z',
+      items: [{ code: 'GA001', name: 'Guitarra demo', quantity: 1 }],
+      total: 134980,
+      statusHistory: [{ status: 'EN_PROCESO', createdAt: '2026-10-13T00:00:00.000Z' }],
+    }
+    const tracking = {
+      id: 'SV-123',
+      trackingNumber: 'TRK-123',
+      status: 'EN_PROCESO',
+      createdAt: '2026-10-13T00:00:00.000Z',
+      shippingMethod: 'DOMICILIO',
+      total: 134980,
+      items: [{ name: 'Guitarra demo', quantity: 1 }],
+      statusHistory: [{ status: 'EN_PROCESO', createdAt: '2026-10-13T00:00:00.000Z' }],
+    }
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([summary]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(tracking), { status: 200 })))
+
+    await expect(fetchMyOrders()).resolves.toMatchObject([{ id: 'SV-123', status: 'en_proceso' }])
+    await expect(trackOrder('SV-123')).resolves.toMatchObject({
+      id: 'SV-123',
+      trackingNumber: 'TRK-123',
+      status: 'en_proceso',
+      shipping: { method: 'domicilio' },
+      total: 134980,
+    })
+    expect(fetch.mock.calls[1][0]).toBe('http://localhost:8080/api/orders/tracking/SV-123')
   })
 })

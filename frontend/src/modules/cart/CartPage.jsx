@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import CartItem from '../../components/cart/CartItem.jsx'
 import { useCart } from '../../hooks/useCart.js'
 import { LOCATIONS } from '../../services/locations.js'
@@ -17,6 +17,7 @@ export default function CartPage() {
   const [checkoutError, setCheckoutError] = useState('')
   const [order, setOrder] = useState(null)
   const [paymentMessage, setPaymentMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const { cartItems, clearCart, createOrder } = useCart()
   const { user } = useAuth()
   const isEmpty = cartItems.length === 0
@@ -25,7 +26,7 @@ export default function CartPage() {
     shipping,
   )
 
-  const handlePayment = (approved) => {
+  const handlePayment = async (approved) => {
     setCheckoutError('')
     setPaymentMessage('')
     if (!user || user.role !== 'customer') {
@@ -44,21 +45,27 @@ export default function CartPage() {
     }
 
     const pickup = PICKUP_POINTS.find((point) => point.id === pickupId)
-    const result = createOrder({
-      shipping: {
-        method: shipping,
-        address: shipping === 'domicilio' ? deliveryAddress.trim() : '',
-        pickup: shipping === 'retiro' && pickup ? { name: pickup.name, address: pickup.address } : null,
-      },
-      customer: user,
-      payment,
-    })
+    setSubmitting(true)
+    try {
+      const result = await createOrder({
+        shipping: {
+          method: shipping,
+          address: shipping === 'domicilio' ? deliveryAddress.trim() : '',
+          pickupId: shipping === 'retiro' ? pickup?.id : null,
+          pickup: shipping === 'retiro' && pickup ? { name: pickup.name, address: pickup.address } : null,
+        },
+        customer: user,
+        payment,
+      })
 
-    if (result.error) {
-      setPaymentMessage(result.error)
-      return
+      if (result.error) {
+        setPaymentMessage(result.error)
+        return
+      }
+      setOrder(result.order)
+    } finally {
+      setSubmitting(false)
     }
-    setOrder(result.order)
   }
 
   if (order) {
@@ -248,12 +255,13 @@ export default function CartPage() {
           )}
           {cartItems.length > 0 && user?.role === 'customer' && (
             <div className="space-y-2">
-              <button type="button" className="btn-primary btn-block" onClick={() => handlePayment(true)}>
+              <button type="button" className="btn-primary btn-block" disabled={submitting} onClick={() => handlePayment(true)}>
                 Pagar con tarjeta (simulación)
               </button>
-              <button type="button" className="btn-outline btn-block" onClick={() => handlePayment(false)}>
+              <button type="button" className="btn-outline btn-block" disabled={submitting} onClick={() => handlePayment(false)}>
                 Simular pago rechazado
               </button>
+              {submitting && <p role="status">Procesando pedido…</p>}
             </div>
           )}
           <Link to="/catalogo" className="btn-outline btn-block">

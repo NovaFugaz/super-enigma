@@ -147,7 +147,9 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public OrderTrackingResponse track(String trackingNumber) {
-        CustomerOrder order = orders.findByTrackingNumber(trackingNumber.trim().toUpperCase())
+        String reference = trackingNumber.trim().toUpperCase();
+        CustomerOrder order = orders.findByTrackingNumber(reference)
+                .or(() -> orders.findById(reference))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido no encontrado"));
         return OrderTrackingResponse.from(order);
     }

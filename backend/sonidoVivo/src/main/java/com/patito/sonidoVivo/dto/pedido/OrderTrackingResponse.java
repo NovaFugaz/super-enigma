@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 
-@Schema(title = "Order Tracking Response", description = "Información pública de seguimiento de un pedido mediante su número de rastreo")
+@Schema(title = "Order Tracking Response", description = "Información pública de seguimiento mediante el código de seguimiento o número de pedido")
 public record OrderTrackingResponse(
 
         @Schema(description = "Identificador único interno del pedido", example = "") String id,
@@ -24,6 +24,9 @@ public record OrderTrackingResponse(
 
         @Schema(description = "Modalidad de entrega seleccionada para el pedido", example = "DOMICILIO") 
         ShippingMethod shippingMethod,
+
+        @Schema(description = "Total del pedido en $CLP")
+        Integer total,
 
         @Schema(description = "Resumen de productos y cantidades incluidos en el envío") List<Line> items,
 
@@ -55,6 +58,7 @@ public record OrderTrackingResponse(
                                 o.getStatus(),
                                 o.getCreatedAt(),
                                 o.getShippingMethod(),
+                                o.getTotal(),
                                 o.getItems().stream()
                                                 .map(i -> new Line(i.getName(), i.getQuantity()))
                                                 .toList(),
