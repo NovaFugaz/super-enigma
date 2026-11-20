@@ -27,20 +27,12 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @GetMapping
-    @Operation(summary = "Listar todas las categorías", 
-        description = "Obtiene el listado completo de categorías disponibles")
+    @Operation(summary = "Listar todas las categorías", description = "Obtiene el listado completo de categorías disponibles")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200",
-            description = "Lista de categorías obtenidas exitosamente",
-            content = @Content(mediaType = "application/json",
-                array = @ArraySchema(schema = @Schema(implementation = CategoryResponse.class))
-            )
-        ),
-        @ApiResponse(
-            responseCode = "500",
-            description = "Error interno del servidor al consultar las categorías",
-            content = @Content 
-        )
+            @ApiResponse(responseCode = "200", description = "Lista de categorías obtenidas exitosamente", 
+                content = @Content(mediaType = "application/json", array = 
+                    @ArraySchema(schema = @Schema(implementation = CategoryResponse.class)))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor al consultar las categorías", content = @Content)
     })
     public List<CategoryResponse> list() {
         return categoryService.findAll();
