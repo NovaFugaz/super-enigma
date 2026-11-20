@@ -61,10 +61,10 @@ public record OrderResponse(
         List<OrderHistoryResponse> statusHistory) {
         @Schema(title = "Order Pickup", description = "Datos de la sucursal seleccionada cuando el método de envío es RETIRO")
         public record Pickup(
-                @Schema(description = "Nombre comercial del punto de retiro", example = "") 
+                @Schema(description = "Nombre comercial del punto de retiro", example = "Starken Viña Batuco") 
                 String name,
 
-                @Schema(description = "Dirección física del punto de retiro", example = "") 
+                @Schema(description = "Dirección física del punto de retiro", example = "Av. Valparaíso 1195, Viña del Mar, Valparaíso") 
                 String address) {
         }
 
@@ -73,7 +73,8 @@ public record OrderResponse(
                 @Schema(description = "Modalidad de entrega seleccionada", example = "DOMICILIO") 
                 ShippingMethod method,
 
-                @Schema(description = "Dirección de entrega a domicilio (null si el método es RETIRO)", example = "", nullable = true) 
+                @Schema(description = "Dirección de entrega a domicilio", 
+                        example = "Av Ejemplo 123", nullable = true) 
                 String address,
 
                 @Schema(description = "Información de sucursal de retiro (null si el método es DOMICILIO)", nullable = true) 
@@ -85,10 +86,10 @@ public record OrderResponse(
                         @Schema(description = "Estado final del pago", example = "aprobado") 
                         String status,
 
-                        @Schema(description = "Identificador único de la transacción entregado por la pasarela", example = "") 
+                        @Schema(description = "Identificador único de la transacción entregado por la pasarela") 
                         String transactionId,
 
-                        @Schema(description = "Código de autorización bancaria o de pago", example = "") 
+                        @Schema(description = "Código de autorización bancaria o de pago") 
                         String authorizationCode) {
         }
 
