@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import EmptyState from '../../components/common/EmptyState.jsx'
 import FormField from '../../components/common/FormField.jsx'
-import { findOrder, ORDER_STATUSES } from '../../services/mockOrders.js'
+import { ORDER_STATUSES, trackOrder } from '../../services/orderApi.js'
 import { formatCLP } from '../../utils/format.js'
 
 const STATUS_LABELS = {
@@ -18,13 +18,47 @@ export default function OrderTrackingPage() {
   const [searchParams] = useSearchParams()
   const initialReference = searchParams.get('tracking') ?? searchParams.get('orden') ?? ''
   const [reference, setReference] = useState(initialReference)
-  const [order, setOrder] = useState(() => findOrder(initialReference))
+  const [order, setOrder] = useState(null)
   const [searched, setSearched] = useState(Boolean(initialReference))
+  const [loading, setLoading] = useState(Boolean(initialReference))
+  const [notFound, setNotFound] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (event) => {
+  useEffect(() => {
+    if (!initialReference) return undefined
+    let active = true
+    trackOrder(initialReference)
+      .then((trackedOrder) => {
+        if (active) setOrder(trackedOrder)
+      })
+      .catch((lookupError) => {
+        if (!active) return
+        if (lookupError.status === 404) setNotFound(true)
+        else setError(lookupError.message)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [initialReference])
+
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    setOrder(findOrder(reference))
     setSearched(true)
+    setLoading(true)
+    setOrder(null)
+    setNotFound(false)
+    setError('')
+    try {
+      setOrder(await trackOrder(reference.trim()))
+    } catch (lookupError) {
+      if (lookupError.status === 404) setNotFound(true)
+      else setError(lookupError.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -43,10 +77,14 @@ export default function OrderTrackingPage() {
             required
           />
         </div>
-        <button type="submit" className="btn-primary">Buscar pedido</button>
+        <button type="submit" className="btn-primary" disabled={loading}>Buscar pedido</button>
       </form>
 
-      {order ? (
+      {loading ? (
+        <p className="mt-8 text-sm text-costa-deep" role="status">Buscando pedido…</p>
+      ) : error ? (
+        <p className="mt-8 text-sm text-red-700" role="alert">No se pudo consultar el seguimiento. Inténtalo nuevamente.</p>
+      ) : order ? (
         <article className="cart-card mt-8 max-w-3xl">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -75,7 +113,7 @@ export default function OrderTrackingPage() {
           </ul>
           <div className="cart-total-row mt-4"><span>Total</span><span>{formatCLP(order.total)}</span></div>
         </article>
-      ) : searched ? (
+      ) : searched && notFound ? (
         <div className="mt-8 max-w-2xl">
           <EmptyState title="No encontramos ese pedido" description="Revisa el número de pedido o el código de seguimiento." />
         </div>

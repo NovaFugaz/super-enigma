@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import EmptyState from '../../components/common/EmptyState.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
-import { getOrders, ORDER_STATUSES } from '../../services/mockOrders.js'
+import { fetchMyOrders, ORDER_STATUSES } from '../../services/orderApi.js'
 import { formatCLP } from '../../utils/format.js'
 
 const STATUS_LABELS = {
@@ -18,24 +18,26 @@ export default function OrdersPage() {
   const { user } = useAuth()
   const [orders, setOrders] = useState([])
   const [statusFilter, setStatusFilter] = useState('todos')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
-    const refreshOrders = () => {
-      setOrders(
-        getOrders()
-          .filter((order) => order.customerId === user.id || order.customerEmail === user.email)
-          .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
-      )
-    }
-
-    refreshOrders()
-    window.addEventListener('sonido-vivo:order-status-changed', refreshOrders)
-    window.addEventListener('storage', refreshOrders)
+    let active = true
+    fetchMyOrders()
+      .then((loadedOrders) => {
+        if (active) setOrders(loadedOrders)
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.message)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
     return () => {
-      window.removeEventListener('sonido-vivo:order-status-changed', refreshOrders)
-      window.removeEventListener('storage', refreshOrders)
+      active = false
     }
-  }, [user.email, user.id])
+  }, [user.email, user.id, reloadKey])
 
   const visibleOrders = useMemo(
     () => statusFilter === 'todos' ? orders : orders.filter((order) => order.status === statusFilter),
@@ -60,7 +62,20 @@ export default function OrdersPage() {
         </label>
       </div>
 
-      {visibleOrders.length === 0 ? (
+      {loading ? (
+        <p className="mt-8 text-sm text-costa-deep" role="status">Cargando tus pedidos…</p>
+      ) : error ? (
+        <div className="mt-8 max-w-2xl" role="alert">
+          <p>No se pudieron cargar tus pedidos.</p>
+          <button type="button" className="auth-inline-link mt-2" onClick={() => {
+            setError('')
+            setLoading(true)
+            setReloadKey((key) => key + 1)
+          }}>
+            Reintentar
+          </button>
+        </div>
+      ) : visibleOrders.length === 0 ? (
         <EmptyState
           title={orders.length === 0 ? 'Todavía no tienes pedidos' : 'No hay pedidos en este estado'}
           description="Cuando confirmes una compra, aparecerá aquí con sus productos y seguimiento."
