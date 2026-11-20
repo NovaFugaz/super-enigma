@@ -219,10 +219,23 @@ class OrderServiceTest {
 
         assertEquals("SV-TEST", response.id());
         assertEquals(OrderStatus.EN_PROCESO, response.status());
+        assertEquals(14_990, response.total());
         assertEquals(List.of("id", "trackingNumber", "status", "createdAt", "shippingMethod",
-                "items", "statusHistory"),
+                "total", "items", "statusHistory"),
                 java.util.Arrays.stream(response.getClass().getRecordComponents())
                         .map(component -> component.getName()).toList());
+    }
+
+    @Test
+    void trackingCanAlsoUseTheOrderId() {
+        CustomerOrder order = order("SV-TEST", OrderStatus.EN_PROCESO, customer);
+        when(orders.findByTrackingNumber("SV-TEST")).thenReturn(Optional.empty());
+        when(orders.findById("SV-TEST")).thenReturn(Optional.of(order));
+
+        var response = orderService.track("sv-test");
+
+        assertEquals("SV-TEST", response.id());
+        assertEquals("TRK-TEST", response.trackingNumber());
     }
 
     @Test
