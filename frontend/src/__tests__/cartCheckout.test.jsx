@@ -1,10 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext } from '../context/auth-context.js'
 import { CartProvider } from '../context/CartContext.jsx'
 import { CatalogProvider } from '../context/CatalogContext.jsx'
 import CartPage from '../modules/cart/CartPage.jsx'
+import { PRODUCTS } from '../data/catalog.js'
+import { fetchProducts } from '../services/catalogApi.js'
+
+vi.mock('../services/catalogApi.js', () => ({
+  fetchProducts: vi.fn(),
+}))
 
 function renderCartPage(user, items = [{ productCode: 'GA001', quantity: 2 }]) {
   localStorage.clear()
@@ -28,16 +34,17 @@ function renderCartPage(user, items = [{ productCode: 'GA001', quantity: 2 }]) {
 describe('cart checkout flows', () => {
   beforeEach(() => {
     localStorage.clear()
+    fetchProducts.mockResolvedValue(PRODUCTS)
   })
 
-  it('requires a customer account before paying', () => {
+  it('requires a customer account before paying', async () => {
     renderCartPage(null)
 
-    expect(screen.getByText(/Inicia sesión como cliente para pagar/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Inicia sesión como cliente para pagar/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /iniciar sesión/i })).toHaveAttribute('href', '/login')
   })
 
-  it('creates an order with approved payment and delivery address', () => {
+  it('creates an order with approved payment and delivery address', async () => {
     renderCartPage({
       id: 'customer-1',
       name: 'Cliente Demo',
@@ -45,7 +52,7 @@ describe('cart checkout flows', () => {
       role: 'customer',
     })
 
-    fireEvent.change(screen.getByLabelText(/dirección de despacho/i), {
+    fireEvent.change(await screen.findByLabelText(/dirección de despacho/i), {
       target: { value: 'Av. Valparaíso 581, Viña del Mar' },
     })
     fireEvent.click(screen.getByRole('button', { name: /pagar con tarjeta/i }))
@@ -61,7 +68,7 @@ describe('cart checkout flows', () => {
     expect(screen.getByText(/Número de pedido/i)).toBeInTheDocument()
   })
 
-  it('shows a rejected payment message without creating the order', () => {
+  it('shows a rejected payment message without creating the order', async () => {
     renderCartPage({
       id: 'customer-1',
       name: 'Cliente Demo',
@@ -69,7 +76,7 @@ describe('cart checkout flows', () => {
       role: 'customer',
     })
 
-    fireEvent.change(screen.getByLabelText(/dirección de despacho/i), {
+    fireEvent.change(await screen.findByLabelText(/dirección de despacho/i), {
       target: { value: 'Calle Falsa 123' },
     })
     fireEvent.click(screen.getByRole('button', { name: /simular pago rechazado/i }))

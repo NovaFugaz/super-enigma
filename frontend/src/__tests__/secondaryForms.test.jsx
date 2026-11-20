@@ -1,63 +1,22 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import ForgotPasswordPage from '../modules/auth/ForgotPasswordPage.jsx'
 import ContactPage from '../modules/contact/ContactPage.jsx'
 
-const { mockNavigate, mockAccountExists, mockResetAccountPassword } = vi.hoisted(() => ({
-  mockNavigate: vi.fn(),
-  mockAccountExists: vi.fn(),
-  mockResetAccountPassword: vi.fn(),
+const { mockRequestPasswordReset, mockConfirmPasswordReset } = vi.hoisted(() => ({
+  mockRequestPasswordReset: vi.fn(),
+  mockConfirmPasswordReset: vi.fn(),
 }))
 
-vi.mock('../services/mockAuth.js', () => ({
-  accountExists: mockAccountExists,
-  resetAccountPassword: mockResetAccountPassword,
+vi.mock('../services/passwordResetApi.js', () => ({
+  requestPasswordReset: mockRequestPasswordReset,
+  confirmPasswordReset: mockConfirmPasswordReset,
 }))
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom')
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  }
-})
 
 describe('secondary forms', () => {
-  beforeEach(() => {
-    mockNavigate.mockReset()
-    mockAccountExists.mockReset()
-    mockResetAccountPassword.mockReset()
-  })
-
-  it('shows validation errors when the recovery email is invalid or not found', () => {
-    mockAccountExists.mockReturnValue(false)
-
-    render(
-      <MemoryRouter>
-        <ForgotPasswordPage />
-      </MemoryRouter>,
-    )
-
-    fireEvent.change(screen.getByLabelText(/correo electrónico/i), {
-      target: { value: 'no-valid' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
-
-    expect(screen.getByText('Ingresa un correo electrónico válido.')).toBeInTheDocument()
-
-    fireEvent.change(screen.getByLabelText(/correo electrónico/i), {
-      target: { value: 'missing@example.cl' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
-
-    expect(screen.getByText('No encontramos una cuenta con ese correo.')).toBeInTheDocument()
-  })
-
-  it('allows resetting a password after validating the account', async () => {
-    mockAccountExists.mockReturnValue(true)
-    mockResetAccountPassword.mockResolvedValue(true)
-
+  it('requests a password reset and shows the local Mailpit inbox', async () => {
+    mockRequestPasswordReset.mockResolvedValue({ message: 'Si la cuenta existe, recibirás un correo.' })
     render(
       <MemoryRouter>
         <ForgotPasswordPage />
@@ -67,7 +26,20 @@ describe('secondary forms', () => {
     fireEvent.change(screen.getByLabelText(/correo electrónico/i), {
       target: { value: 'cliente@sonidovivo.cl' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /enviar enlace de recuperación/i }))
+
+    expect(await screen.findByText(/recibirás un enlace válido por 15 minutos/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /mailpit/i })).toHaveAttribute('href', 'http://localhost:8025')
+    expect(mockRequestPasswordReset).toHaveBeenCalledWith('cliente@sonidovivo.cl')
+  })
+
+  it('confirms a new password using the token from the email link', async () => {
+    mockConfirmPasswordReset.mockResolvedValue({ message: 'La contraseña se restableció correctamente.' })
+    render(
+      <MemoryRouter initialEntries={['/recuperar?token=reset-token-from-mail']}>
+        <ForgotPasswordPage />
+      </MemoryRouter>,
+    )
 
     fireEvent.change(screen.getByLabelText(/^nueva contraseña$/i, { selector: 'input' }), {
       target: { value: 'NewPassword123!' },
@@ -77,10 +49,8 @@ describe('secondary forms', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /guardar contraseña/i }))
 
-    await waitFor(() => {
-      expect(mockResetAccountPassword).toHaveBeenCalledWith('cliente@sonidovivo.cl', 'NewPassword123!')
-      expect(screen.getByText('La contraseña de cliente@sonidovivo.cl se actualizó.')).toBeInTheDocument()
-    })
+    expect(await screen.findByText(/tu contraseña se actualizó/i)).toBeInTheDocument()
+    expect(mockConfirmPasswordReset).toHaveBeenCalledWith('reset-token-from-mail', 'NewPassword123!')
   })
 
   it('renders available store locations and selects a pickup branch', () => {

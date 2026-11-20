@@ -1,11 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext } from '../context/auth-context.js'
 import { CartProvider } from '../context/CartContext.jsx'
 import { CatalogProvider } from '../context/CatalogContext.jsx'
 import ProductDetailPage from '../modules/catalog/ProductDetailPage.jsx'
 import OrderTrackingPage from '../modules/cart/OrderTrackingPage.jsx'
+import { PRODUCTS } from '../data/catalog.js'
+import { fetchProducts } from '../services/catalogApi.js'
+
+vi.mock('../services/catalogApi.js', () => ({
+  fetchProducts: vi.fn(),
+}))
 
 function renderCatalogAndDetail() {
   localStorage.clear()
@@ -28,12 +34,13 @@ function renderCatalogAndDetail() {
 describe('purchase flow', () => {
   beforeEach(() => {
     localStorage.clear()
+    fetchProducts.mockResolvedValue(PRODUCTS)
   })
 
-  it('adds a product to cart from detail view and updates the cart summary', () => {
+  it('adds a product to cart from detail view and updates the cart summary', async () => {
     renderCatalogAndDetail()
 
-    fireEvent.click(screen.getByRole('button', { name: /aumentar cantidad/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /aumentar cantidad/i }))
     const addToCartButtons = screen.getAllByRole('button', { name: /agregar al carrito/i })
     fireEvent.click(addToCartButtons[0])
 
