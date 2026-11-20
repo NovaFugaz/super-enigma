@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CartContext } from './cart-context.js'
 import { useCatalog } from '../hooks/useCatalog.js'
-import { savePaidOrder } from '../services/mockOrders.js'
+import { createPaidOrder } from '../services/orderApi.js'
 import { calcTotals } from '../utils/cart.js'
 
 const CART_STORAGE_KEY = 'sonido-vivo-cart'
@@ -23,7 +23,7 @@ function readCart() {
 }
 
 export function CartProvider({ children }) {
-  const { products, applyNewStock } = useCatalog()
+  const { products, reload: reloadCatalog } = useCatalog()
   const [items, setItems] = useState(readCart)
 
   useEffect(() => {
@@ -42,9 +42,12 @@ export function CartProvider({ children }) {
     return [{ product, quantity, lineTotal: product.precio * quantity }]
   })
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.lineTotal, 0)
-  const tax = Math.round(subtotal * 0.19)
-  const total = subtotal + tax
+  const totals = calcTotals(
+    cartItems.map(({ product, quantity }) => ({ product, qty: quantity })),
+    'retiro',
+  )
+  const { subtotal, total } = totals
+  const tax = totals.iva
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
   const addItem = (product, quantity = 1) => {
@@ -83,62 +86,31 @@ export function CartProvider({ children }) {
 
   const clearCart = () => setItems([])
 
-  const createOrder = ({ shipping, customer, payment }) => {
+  const createOrder = async ({ shipping, customer, payment }) => {
     if (cartItems.length === 0) return { error: 'El carrito está vacío.' }
     if (!customer || customer.role !== 'customer') return { error: 'Inicia sesión con una cuenta de cliente para comprar.' }
     if (!payment?.approved) return { error: 'El pago no fue aprobado.' }
 
-    const orderTotals = calcTotals(
-      cartItems.map(({ product, quantity }) => ({ product, qty: quantity })),
-      shipping?.method,
-    )
-    const createdAt = new Date().toISOString()
-    const orderId = `SV-${Date.now()}`
-    const order = {
-      id: orderId,
-      createdAt,
-      customerId: customer.id,
-      customerName: customer.name,
-      customerEmail: customer.email,
-      status: 'en_proceso',
-      trackingNumber: `TRK-${orderId.slice(3)}`,
-      statusHistory: [
-        { status: 'pendiente', createdAt },
-        { status: 'en_proceso', createdAt },
-      ],
-      payment: {
-        method: 'tarjeta_simulada',
-        status: payment.status,
-        transactionId: payment.transactionId,
-        authorizationCode: payment.authorizationCode,
-      },
-      receipt: {
-        number: `BOL-${orderId}`,
-        type: 'Boleta electrónica simulada',
-        issuedAt: createdAt,
-      },
-      shipping,
-      items: cartItems.map(({ product, quantity, lineTotal }) => ({
-        code: product.codigo,
-        name: product.nombre,
-        brand: product.marca,
-        model: product.modelo,
-        unitPrice: product.precio,
-        quantity,
-        lineTotal,
-      })),
-      subtotal: orderTotals.subtotal,
-      tax: orderTotals.iva,
-      shippingCost: orderTotals.shippingCost,
-      total: orderTotals.total,
+    try {
+      const order = await createPaidOrder({
+        shipping: {
+          method: shipping.method === 'retiro' ? 'RETIRO' : 'DOMICILIO',
+          address: shipping.method === 'domicilio' ? shipping.address : null,
+          pickupId: shipping.method === 'retiro' ? shipping.pickupId : null,
+        },
+        items: cartItems.map(({ product, quantity }) => ({
+          code: product.codigo,
+          quantity,
+        })),
+        paymentApproved: payment.approved,
+      })
+
+      clearCart()
+      reloadCatalog()
+      return { order }
+    } catch (error) {
+      return { error: error.message }
     }
-
-    const result = savePaidOrder(order, products)
-    if (result.error) return result
-
-    applyNewStock(result.stockOverrides)
-    clearCart()
-    return { order: result.order }
   }
 
   return (
