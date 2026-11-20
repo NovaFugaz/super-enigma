@@ -58,7 +58,7 @@ public class OrderController {
     }
 
     @GetMapping("/tracking/{trackingNumber}")
-    @Operation(summary = "Consultar seguimiento público con su número de seguimiento")
+    @Operation(summary = "Consultar seguimiento público con el código de seguimiento o número de pedido")
     @ApiResponse(responseCode = "404", description = "Pedido no encontrado")
     public OrderTrackingResponse track(@PathVariable String trackingNumber) {
         return orderService.track(trackingNumber);
