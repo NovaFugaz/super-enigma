@@ -33,12 +33,24 @@ services:
       DB_PASSWORD: ${MYSQL_PASSWORD:-sonidovivo-local}
       JWT_SECRET: ${JWT_SECRET:-SonidoVivoSoloLaboratorioClaveSecretaDeEjemploMuyLarga12345}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=20.0 -XX:+UseSerialGC}
     ports:
       - "8080:8080"
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    ports:
+      - "8025:8025"
+      - "1025:1025"
     restart: unless-stopped
 
 volumes:

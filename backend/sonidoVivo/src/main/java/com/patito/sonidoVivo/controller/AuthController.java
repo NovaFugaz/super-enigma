@@ -9,8 +9,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.patito.sonidoVivo.dto.auth.AuthResponse;
 import com.patito.sonidoVivo.dto.auth.LoginRequest;
+import com.patito.sonidoVivo.dto.auth.PasswordResetConfirmRequest;
+import com.patito.sonidoVivo.dto.auth.PasswordResetRequest;
+import com.patito.sonidoVivo.dto.auth.PasswordResetResponse;
 import com.patito.sonidoVivo.dto.auth.RegisterRequest;
 import com.patito.sonidoVivo.service.AuthService;
+import com.patito.sonidoVivo.service.PasswordResetService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -25,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
@@ -41,5 +46,20 @@ public class AuthController {
     @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/password-reset/request")
+    @Operation(summary = "Solicitar un enlace de restablecimiento de contraseña")
+    public PasswordResetResponse requestPasswordReset(@Valid @RequestBody PasswordResetRequest request) {
+        return new PasswordResetResponse(passwordResetService.requestReset(request.email()));
+    }
+
+    @PostMapping("/password-reset/confirm")
+    @Operation(summary = "Confirmar una contraseña nueva usando un token de un solo uso")
+    @ApiResponse(responseCode = "400", description = "El token no es válido o expiró")
+    public PasswordResetResponse confirmPasswordReset(
+            @Valid @RequestBody PasswordResetConfirmRequest request) {
+        passwordResetService.confirmReset(request.token(), request.newPassword());
+        return new PasswordResetResponse("La contraseña se restableció correctamente.");
     }
 }

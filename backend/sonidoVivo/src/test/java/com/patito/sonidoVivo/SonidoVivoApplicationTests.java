@@ -35,7 +35,8 @@ import com.patito.sonidoVivo.service.OrderService;
 		"spring.datasource.url=jdbc:h2:mem:sonidovivo-test;DB_CLOSE_DELAY=-1",
 		"spring.datasource.username=sa",
 		"spring.datasource.password=",
-		"spring.jpa.hibernate.ddl-auto=create-drop"
+		"spring.jpa.hibernate.ddl-auto=create-drop",
+		"spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect"
 })
 class SonidoVivoApplicationTests {
 
