@@ -48,6 +48,6 @@ describe('ProtectedRoute', () => {
   it('waits for demo account initialization before deciding access', () => {
     renderProtectedRoute({ user: null, allowedRoles: ['seller'], ready: false })
 
-    expect(screen.getByRole('status')).toHaveTextContent('Preparando cuentas de demostración')
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando sesión')
   })
 })

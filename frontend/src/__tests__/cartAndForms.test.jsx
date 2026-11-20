@@ -11,15 +11,15 @@ import {
   saveCart,
 } from '../utils/cart.js'
 
-const { mockNavigate, mockLogin, mockAuthenticateAccount, mockRegisterAccount } = vi.hoisted(() => ({
+const { mockNavigate, mockLogin, mockLoginAccount, mockRegisterAccount } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockLogin: vi.fn(),
-  mockAuthenticateAccount: vi.fn(),
+  mockLoginAccount: vi.fn(),
   mockRegisterAccount: vi.fn(),
 }))
 
-vi.mock('../services/mockAuth.js', () => ({
-  authenticateAccount: mockAuthenticateAccount,
+vi.mock('../services/authApi.js', () => ({
+  loginAccount: mockLoginAccount,
   registerAccount: mockRegisterAccount,
 }))
 
@@ -88,7 +88,7 @@ describe('auth form behavior', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
     mockLogin.mockReset()
-    mockAuthenticateAccount.mockReset()
+    mockLoginAccount.mockReset()
     mockRegisterAccount.mockReset()
   })
 
@@ -108,10 +108,13 @@ describe('auth form behavior', () => {
   })
 
   it('logs in successfully with an existing account', async () => {
-    mockAuthenticateAccount.mockResolvedValue({
-      email: 'cliente@sonidovivo.cl',
-      role: 'customer',
-      name: 'Cliente Demo',
+    mockLoginAccount.mockResolvedValue({
+      profile: {
+        email: 'cliente@sonidovivo.cl',
+        role: 'customer',
+        name: 'Cliente Demo',
+      },
+      token: 'jwt-demo-token',
     })
 
     render(
@@ -131,12 +134,12 @@ describe('auth form behavior', () => {
     fireEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
 
     await waitFor(() => {
-      expect(mockAuthenticateAccount).toHaveBeenCalledWith('cliente@sonidovivo.cl', 'Cliente123!')
+      expect(mockLoginAccount).toHaveBeenCalledWith('cliente@sonidovivo.cl', 'Cliente123!')
       expect(mockLogin).toHaveBeenCalledWith({
         email: 'cliente@sonidovivo.cl',
         role: 'customer',
         name: 'Cliente Demo',
-      }, false)
+      }, 'jwt-demo-token', false)
       expect(mockNavigate).toHaveBeenCalledWith('/pedidos', { replace: true })
     })
   })

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import FormField from '../../components/common/FormField.jsx'
 import PasswordField from '../../components/common/PasswordField.jsx'
-import { registerAccount } from '../../services/mockAuth.js'
+import { registerAccount } from '../../services/authApi.js'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -28,12 +28,13 @@ export default function RegisterPage() {
     setFormError('')
     if (Object.keys(nextErrors).length > 0) return
 
-    const result = await registerAccount(values)
-    if (result.error) {
-      setFormError(result.error)
+    try {
+      const result = await registerAccount(values)
+      setRegisteredEmail(result.profile.email)
+    } catch (error) {
+      setFormError(error.message)
       return
     }
-    setRegisteredEmail(result.profile.email)
   }
 
   return (

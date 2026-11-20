@@ -1,13 +1,20 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { webcrypto } from 'node:crypto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CatalogProvider } from '../context/CatalogContext.jsx'
 import { useCatalog } from '../hooks/useCatalog.js'
+import { PRODUCTS } from '../data/catalog.js'
+import { fetchProducts } from '../services/catalogApi.js'
+
+vi.mock('../services/catalogApi.js', () => ({
+  fetchProducts: vi.fn(),
+}))
 
 beforeEach(() => {
   vi.resetModules()
   window.localStorage.clear()
   Object.defineProperty(window, 'crypto', { configurable: true, value: webcrypto })
+  fetchProducts.mockResolvedValue(PRODUCTS)
 })
 
 describe('admin user and role management', () => {
@@ -52,7 +59,8 @@ describe('admin catalog and inventory management', () => {
   it('creates a product that immediately appears in the customer catalog', () => {
     const { result } = renderHook(() => useCatalog(), { wrapper: CatalogProvider })
 
-    act(() => {
+    return waitFor(() => expect(result.current.adminProducts.length).toBeGreaterThan(0)).then(() => {
+      act(() => {
       expect(result.current.createProduct({
         codigo: 'ADM001',
         categoria: 'guitarras-acusticas',
@@ -62,14 +70,16 @@ describe('admin catalog and inventory management', () => {
         precio: 50000,
         stock: 4,
       }).product.codigo).toBe('ADM001')
-    })
+      })
 
-    expect(result.current.products.some((product) => product.codigo === 'ADM001')).toBe(true)
-    expect(JSON.parse(window.localStorage.getItem('sonido-vivo-product-overrides')).ADM001.active).toBe(true)
+      expect(result.current.products.some((product) => product.codigo === 'ADM001')).toBe(true)
+      expect(JSON.parse(window.localStorage.getItem('sonido-vivo-product-overrides')).ADM001.active).toBe(true)
+    })
   })
 
-  it('edits product details and deactivates it from the storefront', () => {
+  it('edits product details and deactivates it from the storefront', async () => {
     const { result } = renderHook(() => useCatalog(), { wrapper: CatalogProvider })
+    await waitFor(() => expect(result.current.adminProducts.length).toBeGreaterThan(0))
 
     act(() => {
       expect(result.current.updateProduct('GA001', { nombre: 'Guitarra Renombrada', precio: 131000 }).product.nombre)
@@ -84,8 +94,9 @@ describe('admin catalog and inventory management', () => {
     expect(result.current.adminProducts.find((product) => product.codigo === 'GA001').active).toBe(false)
   })
 
-  it('persists stock changes and rejects negative inventory', () => {
+  it('persists stock changes and rejects negative inventory', async () => {
     const { result } = renderHook(() => useCatalog(), { wrapper: CatalogProvider })
+    await waitFor(() => expect(result.current.adminProducts.length).toBeGreaterThan(0))
 
     act(() => {
       expect(result.current.updateStock('GA001', 2)).toEqual({ stock: 2 })

@@ -1,51 +1,49 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import FormField from '../../components/common/FormField.jsx'
 import PasswordField from '../../components/common/PasswordField.jsx'
-import { accountExists, resetAccountPassword } from '../../services/mockAuth.js'
+import { confirmPasswordReset, requestPasswordReset } from '../../services/passwordResetApi.js'
 
 export default function ForgotPasswordPage() {
-  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token') ?? ''
   const [email, setEmail] = useState('')
-  const [recoveryEmail, setRecoveryEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [emailError, setEmailError] = useState('')
-  const [passwordError, setPasswordError] = useState('')
-  const [confirmError, setConfirmError] = useState('')
-  const [formError, setFormError] = useState('')
+  const [error, setError] = useState('')
   const [complete, setComplete] = useState(false)
+  const [requestSent, setRequestSent] = useState(false)
 
-  const handleFindAccount = (event) => {
+  const handleRequest = async (event) => {
     event.preventDefault()
-    setEmailError('')
-    setFormError('')
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setEmailError('Ingresa un correo electrónico válido.')
-      return
+    setError('')
+    try {
+      await requestPasswordReset(email.trim())
+      setRequestSent(true)
+    } catch (requestError) {
+      setError(requestError.message)
     }
-    if (!accountExists(email)) {
-      setEmailError('No encontramos una cuenta con ese correo.')
-      return
-    }
-    setRecoveryEmail(email.trim().toLowerCase())
   }
 
-  const handleResetPassword = async (event) => {
+  const handleConfirm = async (event) => {
     event.preventDefault()
-    const nextPasswordError = password.length < 8 ? 'Usa al menos 8 caracteres.' : ''
-    const nextConfirmError = confirmPassword !== password ? 'Las contraseñas no coinciden.' : ''
-    setPasswordError(nextPasswordError)
-    setConfirmError(nextConfirmError)
-    setFormError('')
-    if (nextPasswordError || nextConfirmError) return
-
-    if (!(await resetAccountPassword(recoveryEmail, password))) {
-      setFormError('No se pudo actualizar la contraseña en este navegador.')
+    setError('')
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.')
       return
     }
-    setComplete(true)
+    if (password !== confirmPassword) {
+      setError('Las contraseñas no coinciden.')
+      return
+    }
+
+    try {
+      await confirmPasswordReset(token, password)
+      setComplete(true)
+    } catch (resetError) {
+      setError(resetError.message)
+    }
   }
 
   return (
@@ -53,30 +51,22 @@ export default function ForgotPasswordPage() {
       <div className="auth-card">
         <p className="section-kicker">Mi cuenta</p>
         <h1 className="auth-title">Recupera tu contraseña</h1>
-        <p className="auth-subtitle">Recupera el acceso a tu cuenta.</p>
+        <p className="auth-subtitle">Te enviaremos un enlace de un solo uso para restablecerla.</p>
 
         {complete ? (
           <div className="auth-form" role="status" aria-live="polite">
-            <p className="form-hint">La contraseña de {recoveryEmail} se actualizó.</p>
-            <button
-              type="button"
-              className="btn-primary btn-block"
-              onClick={() => navigate('/login', { state: { email: recoveryEmail } })}
-            >
-              Volver a iniciar sesión
-            </button>
+            <p className="form-hint">Tu contraseña se actualizó. Ya puedes iniciar sesión.</p>
+            <Link to="/login" className="btn-primary btn-block text-center">Volver a iniciar sesión</Link>
           </div>
-        ) : recoveryEmail ? (
-          <form className="auth-form" onSubmit={handleResetPassword} noValidate>
-            <p className="form-hint">Cuenta encontrada: {recoveryEmail}</p>
+        ) : token ? (
+          <form className="auth-form" onSubmit={handleConfirm} noValidate>
             <PasswordField
               id="new-password"
               label="Nueva contraseña"
               autoComplete="new-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              error={passwordError}
-              hint="Mínimo 8 caracteres."
+              hint="Usa entre 8 y 72 caracteres."
               minLength={8}
               required/>
             <PasswordField
@@ -85,13 +75,22 @@ export default function ForgotPasswordPage() {
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
-              error={confirmError}
               required/>
-            {formError && <p className="form-error" role="alert">{formError}</p>}
+            {error && <p className="form-error" role="alert">{error}</p>}
             <button type="submit" className="btn-primary btn-block">Guardar contraseña</button>
           </form>
+        ) : requestSent ? (
+          <div className="auth-form" role="status" aria-live="polite">
+            <p className="form-hint">
+              Si la cuenta existe y está activa, recibirás un enlace válido por 15 minutos. Si no aparece,
+              verifica que Docker esté ejecutando Mailpit y vuelve a intentarlo. Revisa la bandeja en{' '}
+              <a href="http://localhost:8025" target="_blank" rel="noreferrer" className="auth-inline-link">
+                Mailpit
+              </a>.
+            </p>
+          </div>
         ) : (
-          <form className="auth-form" onSubmit={handleFindAccount} noValidate>
+          <form className="auth-form" onSubmit={handleRequest} noValidate>
             <FormField
               label="Correo electrónico"
               id="email"
@@ -100,9 +99,9 @@ export default function ForgotPasswordPage() {
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              error={emailError}
               required/>
-            <button type="submit" className="btn-primary btn-block">Continuar</button>
+            {error && <p className="form-error" role="alert">{error}</p>}
+            <button type="submit" className="btn-primary btn-block">Enviar enlace de recuperación</button>
           </form>
         )}
 

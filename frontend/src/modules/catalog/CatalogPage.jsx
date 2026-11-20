@@ -21,7 +21,7 @@ function sortProducts(list, order) {
 }
 
 export default function CatalogPage() {
-    const { categories, products: catalogProducts, source, error } = useCatalog()
+    const { categories, products: catalogProducts, loading, error, reload } = useCatalog()
     const [params, setParams] = useSearchParams()
     const categoria = params.get('categoria') ?? ''
     const query = params.get('q') ?? ''
@@ -86,7 +86,13 @@ export default function CatalogPage() {
         <section className="page-container featured-section">
             <p className="section-kicker">Sonido Vivo</p>
             <h1 className="section-title">Catálogo</h1>
-            {error && <p className="form-hint" role="status">No se pudo leer catalogo.xlsx ({error}); se usa el catálogo de respaldo.</p>}
+            {loading && <p role="status">Cargando catálogo</p>}
+            {error && (
+                <div role="alert" className="form-error">
+                    No pudimos cargar el catálogo por el momento. Inténtalo nuevamente: {error}
+                    <button type="button" className="btn-outline ml-3" onClick={reload}>Reintentar</button>
+                </div>
+            )}
 
             <div className="catalog-layout">
                 <aside className="catalog-filters-wrap">

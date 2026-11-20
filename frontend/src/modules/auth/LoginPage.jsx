@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import FormField from '../../components/common/FormField.jsx'
 import PasswordField from '../../components/common/PasswordField.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
-import { authenticateAccount } from '../../services/mockAuth.js'
+import { loginAccount } from '../../services/authApi.js'
 
 const ROLE_HOME = {
   customer: '/pedidos',
@@ -33,15 +33,15 @@ export default function LoginPage() {
     setFormError('')
     if (Object.keys(nextErrors).length > 0) return
 
-    const profile = await authenticateAccount(values.email, values.password)
-    if (!profile) {
-      setFormError('El correo o la contraseña no coinciden con una cuenta registrada.')
+    try {
+      const { profile, token } = await loginAccount(values.email.trim(), values.password)
+      login(profile, token, remember)
+      const destination = location.state?.from?.pathname ?? ROLE_HOME[profile.role] ?? '/'
+      navigate(destination, { replace: true })
+    } catch (error) {
+      setFormError(error.message)
       return
     }
-
-    login(profile, remember)
-    const destination = location.state?.from?.pathname ?? ROLE_HOME[profile.role] ?? '/'
-    navigate(destination, { replace: true })
   }
 
   return (

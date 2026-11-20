@@ -8,7 +8,7 @@ export default function ProtectedRoute({ allowedRoles }) {
   if (!ready) {
     return (
       <div className="page-container py-16 text-center" role="status" aria-live="polite">
-        Preparando cuentas de demostración...
+        Cargando sesión...
       </div>
     )
   }

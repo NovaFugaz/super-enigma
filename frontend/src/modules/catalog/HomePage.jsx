@@ -4,11 +4,18 @@ import { FEATURED_CODES } from '../../data/catalog.js'
 import { useCatalog } from '../../hooks/useCatalog.js'
 
 export default function HomePage() {
-  const { categories, products } = useCatalog()
+  const { categories, products, loading, error, reload } = useCatalog()
   const featured = products.filter((product) => FEATURED_CODES.includes(product.codigo))
 
   return (
     <>
+      {loading && <p className="page-container pt-6" role="status">Cargando catálogo</p>}
+      {error && (
+        <div className="page-container pt-6" role="alert">
+          No pudimos cargar el catálogo por el momento. Inténtalo nuevamente: {error}
+          <button type="button" className="btn-outline ml-3" onClick={reload}>Reintentar</button>
+        </div>
+      )}
       <section className="page-container featured-section">
         <p className="section-kicker">Explora</p>
         <h2 className="section-title">Explorar por categoría</h2>

@@ -1,19 +1,10 @@
 import { useEffect, useState } from 'react'
-import { CATEGORIES, PRODUCTS } from '../data/catalog.js'
-import { loadCatalogWorkbook } from '../services/catalogWorkbook.js'
+import { CATEGORIES } from '../data/catalog.js'
+import { fetchProducts } from '../services/catalogApi.js'
 import { CatalogContext } from './catalog-context.js'
 
 const STOCK_KEY = 'sonido-vivo-stock'
 const PRODUCT_OVERRIDES_KEY = 'sonido-vivo-product-overrides'
-
-function readStockOverrides() {
-  try {
-    const stored = JSON.parse(window.localStorage.getItem(STOCK_KEY) ?? '{}')
-    return stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {}
-  } catch {
-    return {}
-  }
-}
 
 function applyStockOverrides(products, overrides) {
   return products.map((product) => ({
@@ -22,15 +13,6 @@ function applyStockOverrides(products, overrides) {
       ? overrides[product.codigo]
       : product.stock,
   }))
-}
-
-function readProductOverrides() {
-  try {
-    const stored = JSON.parse(window.localStorage.getItem(PRODUCT_OVERRIDES_KEY) ?? '{}')
-    return stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {}
-  } catch {
-    return {}
-  }
 }
 
 function mergeProductOverrides(baseProducts, overrides) {
@@ -44,30 +26,21 @@ function mergeProductOverrides(baseProducts, overrides) {
 }
 
 export function CatalogProvider({ children }) {
-  const [stockOverrides, setStockOverrides] = useState(readStockOverrides)
-  const [productOverrides, setProductOverrides] = useState(readProductOverrides)
-  const [baseProducts, setBaseProducts] = useState(PRODUCTS)
-  const [allProducts, setAllProducts] = useState(() => {
-    const merged = mergeProductOverrides(PRODUCTS, readProductOverrides())
-    return applyStockOverrides(merged, readStockOverrides())
-  })
-  const [source, setSource] = useState('fallback')
+  const [stockOverrides, setStockOverrides] = useState({})
+  const [productOverrides, setProductOverrides] = useState({})
+  const [baseProducts, setBaseProducts] = useState([])
+  const [allProducts, setAllProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let mounted = true
-    loadCatalogWorkbook()
+    fetchProducts()
       .then((loadedProducts) => {
         if (!mounted) return
-        const currentOverrides = readStockOverrides()
-        const currentProductOverrides = readProductOverrides()
-        const mergedProducts = mergeProductOverrides(loadedProducts, currentProductOverrides)
         setBaseProducts(loadedProducts)
-        setStockOverrides(currentOverrides)
-        setProductOverrides(currentProductOverrides)
-        setAllProducts(applyStockOverrides(mergedProducts, currentOverrides))
-        setSource('xlsx')
+        setAllProducts(loadedProducts)
       })
       .catch((loadError) => {
         if (mounted) setError(loadError.message)
@@ -79,7 +52,7 @@ export function CatalogProvider({ children }) {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [reloadKey])
 
   const applyNewStock = (overrides) => {
     setStockOverrides(overrides)
@@ -171,10 +144,15 @@ export function CatalogProvider({ children }) {
   }
 
   const deactivateProduct = (productCode) => updateProduct(productCode, { active: false })
+  const reload = () => {
+    setError('')
+    setLoading(true)
+    setReloadKey((key) => key + 1)
+  }
   const products = allProducts.filter((product) => product.active !== false)
 
   return (
-    <CatalogContext.Provider value={{ categories: CATEGORIES, products, adminProducts: allProducts, source, loading, error, stockOverrides, applyNewStock, updateStock, createProduct, updateProduct, deactivateProduct }}>
+    <CatalogContext.Provider value={{ categories: CATEGORIES, products, adminProducts: allProducts, loading, error, reload, stockOverrides, applyNewStock, updateStock, createProduct, updateProduct, deactivateProduct }}>
       {children}
     </CatalogContext.Provider>
   )
