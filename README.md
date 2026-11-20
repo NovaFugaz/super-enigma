@@ -1,8 +1,8 @@
-# Sonido Vivo — Prototipo Frontend
+# Sonido Vivo — Tienda online
 
-Prototipo funcional (Fase 1) de e-commerce y gestión interna para **Sonido Vivo**, tienda de instrumentos y equipos musicales de Viña del Mar. Proyecto de la asignatura Desarrollo Fullstack II (DSY1104).
+Aplicación de e-commerce y gestión interna para **Sonido Vivo**, tienda de instrumentos y equipos musicales de Viña del Mar. Proyecto de la asignatura Desarrollo Fullstack II (DSY1104).
 
-Es un frontend **React + Vite + Tailwind CSS** sin backend: los datos viven en `localStorage`, el catálogo se carga desde un archivo Excel y el pago es simulado. La estructura modular deja el proyecto listo para integrar más adelante una API REST (Spring Boot) y MySQL.
+El proyecto incluye un frontend **React + Vite + Tailwind CSS** y una API **Spring Boot + MySQL**. El login/registro y el catálogo usan la API local; el carrito, los pedidos y los paneles de gestión todavía conservan flujos de demostración en el navegador. El pago es simulado.
 
 ---
 
@@ -12,41 +12,47 @@ Es un frontend **React + Vite + Tailwind CSS** sin backend: los datos viven en `
 | --- | --- |
 | UI | React 19, React Router 7 |
 | Build | Vite 8 |
+| API | Spring Boot, Java 21 |
+| Persistencia | MySQL 8.4 + Spring Data JPA |
+| Autenticación | JWT Bearer |
 | Estilos | Tailwind CSS 4 |
 | Mapa | Leaflet + react-leaflet |
-| Catálogo | `read-excel-file` (lee `public/catalogo.xlsx`) |
+| Catálogo | REST API (`GET /api/products`) |
 | Calidad | Vitest + Testing Library, oxlint |
 
 ---
 
-## Instalación y ejecución
+## Instalación y ejecución local
 
 ### Requisitos
 
-- **Node.js 22.22 o superior** (ver `engines` de las dependencias en `package-lock.json`)
-- npm (incluido con Node)
+- Docker Desktop con Docker Compose
+- **Node.js 22.22 o superior** y npm
 
 ### Pasos
 
-```bash
-1. Clonar el repositorio
-- git clone https://github.com/<usuario>/super-enigma.git
-- cd super-enigma/frontend
+Desde `backend/sonidoVivo`, iniciar MySQL y el backend:
 
-2. Instalar dependencias
-- npm install
-
-3. Levantar el servidor de desarrollo
-- npm run dev
+```powershell
+docker compose up --build
 ```
 
-Abre la URL que muestra la terminal (por defecto <http://localhost:5173>).
+La API queda en `http://localhost:8080`; Swagger en `http://localhost:8080/swagger-ui.html`. Compose publica MySQL en el puerto `3307`. Para detener los servicios, ejecutar `docker compose down` desde la misma carpeta.
+
+En otra terminal, desde `frontend`:
+
+```powershell
+npm install
+npm run dev
+```
+
+Vite muestra la URL del frontend (por defecto <http://localhost:5173>). El cliente usa `http://localhost:8080` como API predeterminada; se puede cambiar con `VITE_API_URL`. Si cambias el origen del frontend, actualiza `CORS_ALLOWED_ORIGINS` y `FRONTEND_URL` en Docker Compose para que los enlaces de recuperación apunten a la dirección correcta.
 
 > El repo incluye `package-lock.json` y `pnpm-lock.yaml`. Con npm se usa el primero; si prefieres pnpm, usa `pnpm install`.
 
-## Usuarios de prueba (mock)
+## Usuarios de prueba
 
-Cuentas demo para probar las funcionalidades.
+Cuentas demo creadas por el backend en MySQL al iniciar Docker Compose.
 
 | Rol | Correo | Contraseña | Entra a |
 | --- | --- | --- | --- |
@@ -54,20 +60,9 @@ Cuentas demo para probar las funcionalidades.
 | Vendedor | `vendedor@sonidovivo.cl` | `Vendedor123!` | `/vendedor` |
 | Administrador | `admin@sonidovivo.cl` | `Admin123!` | `/administracion` |
 
-También puedes **registrarte** desde `/registro` (se crea siempre con rol *Cliente*; la contraseña debe tener mínimo 8 caracteres) y **recuperar contraseña** desde `/recuperar`. El administrador puede crear usuarios con cualquier rol, editarlos y desactivarlos (un usuario desactivado no puede iniciar sesión).
+También puedes **registrarte** desde `/registro` (se crea siempre con rol *Cliente*; la contraseña debe tener mínimo 8 caracteres). Para recuperar contraseña, solicita un enlace en `/recuperar`; en local, abre la bandeja de Mailpit en <http://localhost:8025>.
 
-### Pedidos de demostración
-
-Al iniciar se precargan 6 pedidos del cliente demo, uno por cada estado, útiles para probar el seguimiento y los paneles:
-
-| Pedido | Seguimiento | Estado |
-| --- | --- | --- |
-| `SV-DEMO-1001` | `TRK-DEMO-1001` | pendiente |
-| `SV-DEMO-1002` | `TRK-DEMO-1002` | en_proceso |
-| `SV-DEMO-1003` | `TRK-DEMO-1003` | validado |
-| `SV-DEMO-1004` | `TRK-DEMO-1004` | enviado |
-| `SV-DEMO-1005` | `TRK-DEMO-1005` | entregado (retiro en tienda) |
-| `SV-DEMO-1006` | `TRK-DEMO-1006` | rechazado |
+Los pedidos de demostración que se precargaban en el prototipo anterior no se crean en la API. La compra y los paneles de pedidos siguen pendientes de integración y no comparten sus datos con MySQL.
 
 ---
 
@@ -126,7 +121,7 @@ super-enigma/
 ├── documentacion/              # Documentación del proyecto (ERS)
 ├── frontend/
 │   ├── public/
-│   │   └── catalogo.xlsx       # Catálogo inicial (50 productos)
+│   │   └── catalogo.xlsx       # Archivo Excel del prototipo anterior
 │   ├── src/
 │   │   ├── __tests__/          # Pruebas unitarias (Vitest)
 │   │   ├── assets/             # Imágenes y logos
@@ -161,19 +156,18 @@ super-enigma/
 
 ---
 
-## Persistencia de datos
+## Persistencia actual
 
-Todo se guarda en el navegador (`localStorage`/`sessionStorage`):
+La API persiste usuarios, catálogo y tokens de restablecimiento en MySQL. El correo se captura localmente en Mailpit (SMTP `localhost:1025`, interfaz web `localhost:8025`), sin enviarlo fuera de tu equipo. La sesión JWT se conserva en `sessionStorage` por defecto o en `localStorage` al seleccionar “Recordarme”. El carrito y las operaciones aún no integradas persisten en el navegador:
 
 | Clave | Contenido |
 | --- | --- |
-| `sonido-vivo-users` | Cuentas de usuario |
-| `sonido-vivo-session` | Sesión activa (`sessionStorage`, o `localStorage`) |
+| `sonido-vivo-session` | Sesión activa con perfil y JWT (`sessionStorage` o `localStorage`) |
 | `sonido-vivo-cart` | Carrito |
-| `sonido-vivo-orders` | Pedidos y auditoría |
-| `sonido-vivo-stock` | Stock modificado por ventas o por el personal |
-| `sonido-vivo-product-overrides` | Productos creados o editados desde administración |
-| `sonido-vivo-low-stock-threshold` | Umbral de stock bajo |
+| `sonido-vivo-orders` | Pedidos de demostración (aún no conectados a la API) |
+| `sonido-vivo-stock` | Stock de demostración modificado desde los paneles locales |
+| `sonido-vivo-product-overrides` | Cambios locales de productos de demostración |
+| `sonido-vivo-low-stock-threshold` | Umbral de stock bajo del panel local |
 
 ---
 
@@ -183,15 +177,17 @@ Todo se guarda en el navegador (`localStorage`/`sessionStorage`):
 npm test
 ```
 
-Cubren rutas protegidas, autenticación mock, pedidos y transiciones de estado, carga del catálogo desde Excel, datos de administración y reporte de ventas.
+Cubren rutas protegidas, autenticación, integración HTTP/JWT, pedidos y transiciones de estado, datos de administración y reportes. El parser Excel se conserva para pruebas del prototipo anterior.
 
 ---
 
-## Limitaciones (Fase 1)
+## Estado y limitaciones de integración
 
-- No hay backend: la autenticación y el control de acceso por rol (RBAC) se simulan solo en el cliente.
+- Login y registro usan Spring Boot; el backend aplica JWT y control de acceso por rol.
+- El catálogo visible se carga desde la API. Si no está disponible, se muestra un error en lugar de sustituirlo silenciosamente por datos locales.
+- La compra, el historial y seguimiento de pedidos, los cambios de inventario, la administración y los reportes todavía usan datos/servicios locales y deben conectarse a sus endpoints antes de considerar completa la integración.
+- La recuperación usa enlaces de un solo uso, con vencimiento de 15 minutos. En este proyecto local, los correos se revisan en Mailpit.
 - El pago es simulado; no se conecta a pasarelas ni bancos reales.
-- Los datos son locales a cada navegador; no se comparten entre dispositivos.
-- Integración futura: API REST (Spring Boot), MySQL, JWT y HTTPS/TLS.
+- La aplicación está pensada para ejecutarse localmente con Docker Compose; no se ha desplegado en un servicio externo.
 
 ---
