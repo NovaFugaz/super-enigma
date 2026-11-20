@@ -115,7 +115,7 @@ export default function CatalogPage() {
                                 className="form-input"
                                 placeholder="Nombre, marca o modelo"
                                 value={query}
-                                onChange={(e) => setParam('q', e.target.value)}/>
+                                onChange={(e) => setParam('q', e.target.value)} />
                         </div>
 
                         <fieldset className="filter-group">
@@ -125,14 +125,14 @@ export default function CatalogPage() {
                                     type="radio"
                                     name="categoria"
                                     checked={categoria === ''}
-                                    onChange={() => changeCategory('')}/>Todas</label>
+                                    onChange={() => changeCategory('')} />Todas</label>
                             {categories.map((c) => (
                                 <label key={c.slug} className="filter-option">
                                     <input
                                         type="radio"
                                         name="categoria"
                                         checked={categoria === c.slug}
-                                        onChange={() => changeCategory(c.slug)}/>
+                                        onChange={() => changeCategory(c.slug)} />
                                     {c.nombre}
                                 </label>
                             ))}
@@ -146,7 +146,7 @@ export default function CatalogPage() {
                                         <input
                                             type="checkbox"
                                             checked={marcas.includes(marca)}
-                                            onChange={() => toggleMarca(marca)}/>
+                                            onChange={() => toggleMarca(marca)} />
                                         {marca}
                                     </label>
                                 ))}
@@ -164,7 +164,7 @@ export default function CatalogPage() {
                                     placeholder="Mín."
                                     aria-label="Precio mínimo"
                                     value={min}
-                                    onChange={(e) => setMin(e.target.value)}/>
+                                    onChange={(e) => setMin(e.target.value)} />
 
                                 <input
                                     type="number"
@@ -174,7 +174,7 @@ export default function CatalogPage() {
                                     placeholder="Máx."
                                     aria-label="Precio máximo"
                                     value={max}
-                                    onChange={(e) => setMax(e.target.value)}/>
+                                    onChange={(e) => setMax(e.target.value)} />
                             </div>
                         </fieldset>
 
@@ -182,7 +182,7 @@ export default function CatalogPage() {
                             <input
                                 type="checkbox"
                                 checked={soloStock}
-                                onChange={(e) => setSoloStock(e.target.checked)}/>
+                                onChange={(e) => setSoloStock(e.target.checked)} />
                             Solo con stock
                         </label>
 
@@ -198,9 +198,6 @@ export default function CatalogPage() {
                     <div className="catalog-toolbar">
                         <p className="text-sm text-costa-deep">
                             {filteredProducts.length} {filteredProducts.length === 1 ? 'producto' : 'productos'}
-                            <span className="ml-2 text-xs text-costa-sage">
-                                {source === 'xlsx' ? 'Desde catálogo Excel' : 'Catálogo de respaldo'}
-                            </span>
                         </p>
 
                         <label className="catalog-sort">
@@ -221,7 +218,7 @@ export default function CatalogPage() {
                     {filteredProducts.length === 0 ? (
                         <EmptyState
                             title="Sin resultados"
-                            description="Prueba con otros filtros o limpia la búsqueda."/>
+                            description="Prueba con otros filtros o limpia la búsqueda." />
                     ) : (
                         <div className="product-grid">
                             {filteredProducts.map((product) => (
