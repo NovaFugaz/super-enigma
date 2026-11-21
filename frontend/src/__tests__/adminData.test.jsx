@@ -7,6 +7,12 @@ import { PRODUCTS } from '../data/catalog.js'
 import { fetchProducts } from '../services/catalogApi.js'
 
 vi.mock('../services/catalogApi.js', () => ({
+  fetchCategories: vi.fn().mockResolvedValue([{
+    slug: 'guitarras-acusticas',
+    nombre: 'Guitarras Acústicas',
+    descripcion: '',
+    image: '',
+  }]),
   fetchProducts: vi.fn(),
 }))
 
@@ -79,6 +85,24 @@ describe('admin catalog and inventory management', () => {
     const { result } = renderHook(() => useCatalog(), { wrapper: CatalogProvider })
 
     await waitFor(() => expect(result.current.adminProducts.length).toBeGreaterThan(0))
+    expect(result.current.categories).toEqual([{
+      slug: 'guitarras-acusticas',
+      nombre: 'Guitarras Acústicas',
+      descripcion: '',
+      image: '',
+    }])
+
+    await act(async () => {
+      const response = await result.current.createProduct({
+        codigo: 'ADM002',
+        categoria: 'categoria-inexistente',
+        nombre: 'Producto inválido',
+        precio: 50000,
+        stock: 4,
+      })
+      expect(response.error).toMatch(/categoría válida/)
+    })
+
     await act(async () => {
       const response = await result.current.createProduct({
         codigo: 'ADM001',

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext } from '../context/auth-context.js'
@@ -13,7 +13,36 @@ const orderApiMocks = vi.hoisted(() => ({
 }))
 
 vi.mock('../services/catalogApi.js', () => ({
+  fetchCategories: vi.fn().mockResolvedValue([{
+    slug: 'guitarras-acusticas',
+    nombre: 'Guitarras Acústicas',
+    descripcion: '',
+    image: '',
+  }]),
   fetchProducts: vi.fn(),
+}))
+
+vi.mock('../services/locations.js', () => ({
+  fetchLocations: vi.fn().mockResolvedValue([
+    {
+      id: 'retiro-centro',
+      type: 'pickup',
+      name: 'Starken Viña Batuco',
+      address: 'Av. Valparaíso 1195, Viña del Mar',
+      position: [-33.0259, -71.5449],
+      hours: ['Lunes a Viernes: 09:00 - 18:30 hrs'],
+      note: '',
+    },
+    {
+      id: 'retiro-chile',
+      type: 'pickup',
+      name: 'Chilexpress Centro de Servicios',
+      address: 'San Antonio 1218, Viña del Mar',
+      position: [-33.011, -71.5426],
+      hours: ['Lunes a Viernes: 09:00 - 18:00 hrs'],
+      note: '',
+    },
+  ]),
 }))
 
 vi.mock('../services/orderApi.js', () => ({
@@ -95,7 +124,31 @@ describe('cart checkout flows', () => {
       paymentApproved: true,
     })
     expect(localStorage.getItem('sonido-vivo-orders')).toBeNull()
-    expect(JSON.parse(localStorage.getItem('sonido-vivo-cart'))).toEqual([])
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('sonido-vivo-cart'))).toEqual([]))
+  })
+
+  it('uses the selected backend pickup location when creating an order', async () => {
+    renderCartPage({
+      id: 'customer-1',
+      name: 'Cliente Demo',
+      email: 'cliente@sonidovivo.cl',
+      role: 'customer',
+    })
+
+    fireEvent.click(await screen.findByRole('radio', { name: /retiro en punto/i }))
+    fireEvent.click(screen.getByRole('radio', { name: /Chilexpress Centro de Servicios/i }))
+    fireEvent.click(screen.getByRole('button', { name: /pagar con tarjeta/i }))
+
+    expect(await screen.findByText(/Pedido confirmado/i)).toBeInTheDocument()
+    expect(orderApiMocks.createPaidOrder).toHaveBeenCalledWith({
+      shipping: {
+        method: 'RETIRO',
+        address: null,
+        pickupId: 'retiro-chile',
+      },
+      items: [{ code: 'GA001', quantity: 2 }],
+      paymentApproved: true,
+    })
   })
 
   it('shows a rejected payment message without creating the order', async () => {

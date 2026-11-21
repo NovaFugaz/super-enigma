@@ -4,7 +4,13 @@ import { AuthProvider } from '../context/AuthContext.jsx'
 import { useAuth } from '../hooks/useAuth.js'
 import { apiRequest, ApiError } from '../services/api.js'
 import { loginAccount, registerAccount } from '../services/authApi.js'
-import { fetchProducts, toCatalogProduct } from '../services/catalogApi.js'
+import {
+  fetchCategories,
+  fetchProducts,
+  toCatalogCategory,
+  toCatalogProduct,
+} from '../services/catalogApi.js'
+import { fetchLocations, toLocation } from '../services/locations.js'
 import {
   createStaffProduct,
   deactivateStaffProduct,
@@ -158,6 +164,47 @@ describe('backend API integration services', () => {
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify([product]), { status: 200 })))
     await expect(fetchProducts()).resolves.toEqual([toCatalogProduct(product)])
+  })
+
+  it('loads categories and locations from their public endpoints and maps backend fields', async () => {
+    const category = {
+      slug: 'guitarras-acusticas',
+      name: 'Guitarras Acústicas',
+      description: 'Instrumentos acústicos',
+      image: '/images/acusticas.jpg',
+    }
+    const location = {
+      id: 'retiro-centro',
+      type: 'pickup',
+      name: 'Starken Viña Batuco',
+      address: 'Av. Valparaíso 1195, Viña del Mar',
+      position: [-33.0259, -71.5449],
+      hours: ['Lunes a Viernes: 09:00 - 18:30 hrs'],
+      note: 'Retiro de pedidos',
+    }
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([category]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([location]), { status: 200 })))
+
+    await expect(fetchCategories()).resolves.toEqual([toCatalogCategory(category)])
+    await expect(fetchLocations()).resolves.toEqual([toLocation(location)])
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual([
+      'http://localhost:8080/api/categories',
+      'http://localhost:8080/api/locations',
+    ])
+  })
+
+  it('rejects invalid category and location responses', () => {
+    expect(() => toCatalogCategory({ slug: 'guitarras-acusticas' }))
+      .toThrow(/categoría con datos inválidos/)
+    expect(() => toLocation({
+      id: 'retiro-centro',
+      type: 'pickup',
+      name: 'Starken',
+      address: 'Av. Valparaíso',
+      position: [-33.0259],
+      hours: [],
+    })).toThrow(/ubicación con datos inválidos/)
   })
 
   it('persists and restores the authenticated user with the JWT in the selected storage', () => {

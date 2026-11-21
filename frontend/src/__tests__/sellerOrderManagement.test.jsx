@@ -12,6 +12,12 @@ const orderApiMocks = vi.hoisted(() => ({
 }))
 
 vi.mock('../services/catalogApi.js', () => ({
+  fetchCategories: vi.fn().mockResolvedValue([{
+    slug: 'guitarras-acusticas',
+    nombre: 'Guitarras Acústicas',
+    descripcion: '',
+    image: '',
+  }]),
   fetchProducts: vi.fn(),
 }))
 

@@ -14,6 +14,31 @@ vi.mock('../services/passwordResetApi.js', () => ({
   confirmPasswordReset: mockConfirmPasswordReset,
 }))
 
+vi.mock('../services/locations.js', () => ({
+  fetchLocations: vi.fn().mockResolvedValue([
+    {
+      id: 'tienda',
+      type: 'store',
+      name: 'Sonido Vivo - Tienda',
+      address: 'Av. Valparaíso 581, Viña del Mar',
+      position: [-33.0241, -71.5543],
+      hours: ['Lunes a Viernes: 10:30 - 19:30 hrs'],
+      note: 'Ubicación de la tienda física.',
+    },
+    {
+      id: 'retiro-centro',
+      type: 'pickup',
+      name: 'Starken Viña Batuco',
+      address: 'Av. Valparaíso 1195, Viña del Mar',
+      position: [-33.0259, -71.5449],
+      hours: ['Lunes a Viernes: 09:00 - 18:30 hrs'],
+      note: 'Retiro de pedidos Starken',
+    },
+  ]),
+  googleDirectionsUrl: ([latitude, longitude]) => `${latitude},${longitude}`,
+  wazeUrl: ([latitude, longitude]) => `${latitude},${longitude}`,
+}))
+
 describe('secondary forms', () => {
   it('requests a password reset and shows the local Mailpit inbox', async () => {
     mockRequestPasswordReset.mockResolvedValue({ message: 'Si la cuenta existe, recibirás un correo.' })
@@ -53,14 +78,14 @@ describe('secondary forms', () => {
     expect(mockConfirmPasswordReset).toHaveBeenCalledWith('reset-token-from-mail', 'NewPassword123!')
   })
 
-  it('renders available store locations and selects a pickup branch', () => {
+  it('renders available store locations and selects a pickup branch', async () => {
     render(
       <MemoryRouter>
         <ContactPage />
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('heading', { name: 'Sonido Vivo - Tienda', level: 2 })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Sonido Vivo - Tienda', level: 2 })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Starken Viña Batuco/i })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /Starken Viña Batuco/i }))
