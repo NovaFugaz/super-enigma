@@ -6,6 +6,13 @@ import { apiRequest, ApiError } from '../services/api.js'
 import { loginAccount, registerAccount } from '../services/authApi.js'
 import { fetchProducts, toCatalogProduct } from '../services/catalogApi.js'
 import {
+  createStaffProduct,
+  deactivateStaffProduct,
+  fetchStaffProducts,
+  updateProductStock,
+  updateStaffProduct,
+} from '../services/productApi.js'
+import {
   createPaidOrder,
   fetchMyOrders,
   fetchStaffOrders,
@@ -317,5 +324,56 @@ describe('backend API integration services', () => {
       method: 'PATCH',
       body: JSON.stringify({ status: 'VALIDADO' }),
     })
+  })
+
+  it('uses staff product endpoints for listing, CRUD and inventory updates', async () => {
+    const backendProduct = {
+      code: 'ADM-001',
+      category: 'guitarras-acusticas',
+      name: 'Guitarra Admin',
+      brand: 'Demo',
+      model: 'ADM-1',
+      price: 50000,
+      stock: 4,
+      description: 'Producto de prueba',
+      image: '',
+      active: true,
+    }
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([backendProduct]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(backendProduct), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ...backendProduct, stock: 8 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ...backendProduct, name: 'Guitarra Editada' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 })))
+
+    await expect(fetchStaffProducts()).resolves.toMatchObject([{ codigo: 'ADM-001', stock: 4 }])
+    await createStaffProduct({
+      codigo: 'ADM-001',
+      categoria: 'guitarras-acusticas',
+      nombre: 'Guitarra Admin',
+      marca: 'Demo',
+      modelo: 'ADM-1',
+      precio: 50000,
+      stock: 4,
+      descripcion: 'Producto de prueba',
+      image: '',
+      active: true,
+    })
+    await expect(updateProductStock('ADM-001', 8)).resolves.toMatchObject({ stock: 8 })
+    await expect(updateStaffProduct('ADM-001', {
+      ...toCatalogProduct(backendProduct),
+      nombre: 'Guitarra Editada',
+    })).resolves.toMatchObject({ nombre: 'Guitarra Editada' })
+    await deactivateStaffProduct('ADM-001')
+
+    expect(fetch.mock.calls.map(([url, options]) => [url, options.method ?? 'GET'])).toEqual([
+      ['http://localhost:8080/api/staff/products?includeInactive=true', 'GET'],
+      ['http://localhost:8080/api/staff/products', 'POST'],
+      ['http://localhost:8080/api/staff/products/ADM-001/stock', 'PATCH'],
+      ['http://localhost:8080/api/staff/products/ADM-001', 'PUT'],
+      ['http://localhost:8080/api/staff/products/ADM-001', 'DELETE'],
+    ])
+    expect(fetch.mock.calls[1][1].body).toContain('"code":"ADM-001"')
+    expect(fetch.mock.calls[2][1].body).toBe(JSON.stringify({ stock: 8 }))
   })
 })

@@ -10,11 +10,30 @@ vi.mock('../services/catalogApi.js', () => ({
   fetchProducts: vi.fn(),
 }))
 
+const productApiMocks = vi.hoisted(() => ({
+  createStaffProduct: vi.fn(),
+  deactivateStaffProduct: vi.fn(),
+  fetchStaffProducts: vi.fn(),
+  updateProductStock: vi.fn(),
+  updateStaffProduct: vi.fn(),
+}))
+
+vi.mock('../services/productApi.js', () => productApiMocks)
+
 beforeEach(() => {
+  vi.clearAllMocks()
   vi.resetModules()
   window.localStorage.clear()
   Object.defineProperty(window, 'crypto', { configurable: true, value: webcrypto })
   fetchProducts.mockResolvedValue(PRODUCTS)
+  productApiMocks.fetchStaffProducts.mockResolvedValue(PRODUCTS)
+  productApiMocks.createStaffProduct.mockImplementation(async (product) => product)
+  productApiMocks.deactivateStaffProduct.mockResolvedValue(undefined)
+  productApiMocks.updateProductStock.mockImplementation(async (code, stock) => ({
+    ...PRODUCTS.find((product) => product.codigo === code),
+    stock,
+  }))
+  productApiMocks.updateStaffProduct.mockImplementation(async (_code, product) => product)
 })
 
 describe('admin user and role management', () => {
@@ -56,12 +75,12 @@ describe('admin user and role management', () => {
 })
 
 describe('admin catalog and inventory management', () => {
-  it('creates a product that immediately appears in the customer catalog', () => {
+  it('creates a product through the backend and updates the customer catalog', async () => {
     const { result } = renderHook(() => useCatalog(), { wrapper: CatalogProvider })
 
-    return waitFor(() => expect(result.current.adminProducts.length).toBeGreaterThan(0)).then(() => {
-      act(() => {
-      expect(result.current.createProduct({
+    await waitFor(() => expect(result.current.adminProducts.length).toBeGreaterThan(0))
+    await act(async () => {
+      const response = await result.current.createProduct({
         codigo: 'ADM001',
         categoria: 'guitarras-acusticas',
         nombre: 'Guitarra Admin',
@@ -69,43 +88,57 @@ describe('admin catalog and inventory management', () => {
         modelo: 'ADM-1',
         precio: 50000,
         stock: 4,
-      }).product.codigo).toBe('ADM001')
       })
-
-      expect(result.current.products.some((product) => product.codigo === 'ADM001')).toBe(true)
-      expect(JSON.parse(window.localStorage.getItem('sonido-vivo-product-overrides')).ADM001.active).toBe(true)
+      expect(response.product.codigo).toBe('ADM001')
     })
+
+    expect(productApiMocks.createStaffProduct).toHaveBeenCalledWith(expect.objectContaining({
+      codigo: 'ADM001',
+      nombre: 'Guitarra Admin',
+    }))
+    expect(result.current.products.some((product) => product.codigo === 'ADM001')).toBe(true)
+    expect(window.localStorage.getItem('sonido-vivo-product-overrides')).toBeNull()
   })
 
-  it('edits product details and deactivates it from the storefront', async () => {
+  it('edits and deactivates products through the backend', async () => {
     const { result } = renderHook(() => useCatalog(), { wrapper: CatalogProvider })
     await waitFor(() => expect(result.current.adminProducts.length).toBeGreaterThan(0))
 
-    act(() => {
-      expect(result.current.updateProduct('GA001', { nombre: 'Guitarra Renombrada', precio: 131000 }).product.nombre)
-        .toBe('Guitarra Renombrada')
+    await act(async () => {
+      const response = await result.current.updateProduct('GA001', {
+        nombre: 'Guitarra Renombrada',
+        precio: 131000,
+      })
+      expect(response.product.nombre).toBe('Guitarra Renombrada')
     })
+    expect(productApiMocks.updateStaffProduct).toHaveBeenCalledWith(
+      'GA001',
+      expect.objectContaining({ nombre: 'Guitarra Renombrada', precio: 131000 }),
+    )
     expect(result.current.products.find((product) => product.codigo === 'GA001').precio).toBe(131000)
 
-    act(() => {
-      result.current.deactivateProduct('GA001')
+    await act(async () => {
+      await result.current.deactivateProduct('GA001')
     })
+    expect(productApiMocks.deactivateStaffProduct).toHaveBeenCalledWith('GA001')
     expect(result.current.products.some((product) => product.codigo === 'GA001')).toBe(false)
     expect(result.current.adminProducts.find((product) => product.codigo === 'GA001').active).toBe(false)
   })
 
-  it('persists stock changes and rejects negative inventory', async () => {
+  it('updates stock through the backend and rejects negative inventory', async () => {
     const { result } = renderHook(() => useCatalog(), { wrapper: CatalogProvider })
     await waitFor(() => expect(result.current.adminProducts.length).toBeGreaterThan(0))
 
-    act(() => {
-      expect(result.current.updateStock('GA001', 2)).toEqual({ stock: 2 })
+    await act(async () => {
+      expect(await result.current.updateStock('GA001', 2)).toEqual({ stock: 2 })
     })
+    expect(productApiMocks.updateProductStock).toHaveBeenCalledWith('GA001', 2)
     expect(result.current.products.find((product) => product.codigo === 'GA001').stock).toBe(2)
-    expect(JSON.parse(window.localStorage.getItem('sonido-vivo-stock')).GA001).toBe(2)
+    expect(window.localStorage.getItem('sonido-vivo-stock')).toBeNull()
 
-    act(() => {
-      expect(result.current.updateStock('GA001', -1).error).toMatch(/entero mayor o igual a cero/)
+    await expect(result.current.updateStock('GA001', -1)).resolves.toMatchObject({
+      error: expect.stringMatching(/entero mayor o igual a cero/),
     })
+    expect(productApiMocks.updateProductStock).toHaveBeenCalledTimes(1)
   })
 })
