@@ -3,10 +3,10 @@ import { useAuth } from '../../hooks/useAuth.js'
 import { useCatalog } from '../../hooks/useCatalog.js'
 import {
   createManagedUser,
-  listManagedUsers,
+  fetchManagedUsers,
   updateManagedUser,
   USER_ROLES,
-} from '../../services/mockAuth.js'
+} from '../../services/userApi.js'
 import { downloadSalesReport, fetchSalesReport } from '../../services/salesReport.js'
 import { formatCLP } from '../../utils/format.js'
 
@@ -28,7 +28,7 @@ function readThreshold() {
 }
 
 export default function AdminPanelPage() {
-  const { user } = useAuth()
+  const { user, token, login } = useAuth()
   const {
     adminProducts,
     categories,
@@ -40,13 +40,18 @@ export default function AdminPanelPage() {
     updateStock,
   } = useCatalog()
   const [activeTab, setActiveTab] = useState('dashboard')
-  const [users, setUsers] = useState(listManagedUsers)
+  const [users, setUsers] = useState([])
   const [userDraft, setUserDraft] = useState(EMPTY_USER)
   const [editingUserId, setEditingUserId] = useState('')
   const [userQuery, setUserQuery] = useState('')
   const [userRoleFilter, setUserRoleFilter] = useState('todos')
   const [userStatusFilter, setUserStatusFilter] = useState('todos')
   const [userError, setUserError] = useState('')
+  const [usersLoading, setUsersLoading] = useState(true)
+  const [usersLoaded, setUsersLoaded] = useState(false)
+  const [usersError, setUsersError] = useState('')
+  const [usersReloadKey, setUsersReloadKey] = useState(0)
+  const [savingUserId, setSavingUserId] = useState('')
   const [productDraft, setProductDraft] = useState(EMPTY_PRODUCT)
   const [editingProductCode, setEditingProductCode] = useState('')
   const [productQuery, setProductQuery] = useState('')
@@ -66,6 +71,27 @@ export default function AdminPanelPage() {
   const [exportingReport, setExportingReport] = useState(false)
   const [reportExportError, setReportExportError] = useState('')
   const [feedback, setFeedback] = useState('')
+
+  useEffect(() => {
+    let active = true
+    fetchManagedUsers()
+      .then((loadedUsers) => {
+        if (active) {
+          setUsers(loadedUsers)
+          setUsersLoaded(true)
+          setUsersError('')
+        }
+      })
+      .catch((error) => {
+        if (active) setUsersError(error.message)
+      })
+      .finally(() => {
+        if (active) setUsersLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [usersReloadKey])
 
   useEffect(() => {
     if (catalogLoading) return undefined
@@ -159,18 +185,21 @@ export default function AdminPanelPage() {
     }
   }
 
-  const refreshUsers = () => setUsers(listManagedUsers())
-
   const saveUser = async (event) => {
     event.preventDefault()
     setUserError('')
-    if (!userDraft.name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userDraft.email.trim())) {
-      setUserError('Ingresa un nombre y un correo válido.')
+    if (userDraft.name.trim().length < 2 || !userDraft.phone.trim() ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userDraft.email.trim())) {
+      setUserError('Ingresa un nombre, teléfono y correo válido.')
       return
     }
 
     if (editingUserId) {
       const editingAccount = users.find((account) => account.id === editingUserId)
+      if (!editingAccount) {
+        setUserError('No se encontró el usuario seleccionado.')
+        return
+      }
       const activeAdminCount = users.filter((account) => account.active && account.role === 'admin').length
       if (editingUserId === user.id && userDraft.role !== user.role) {
         setUserError('No puedes cambiar tu propio rol desde esta sesión.')
@@ -180,28 +209,44 @@ export default function AdminPanelPage() {
         setUserError('Debe permanecer al menos un administrador activo.')
         return
       }
-      const result = updateManagedUser(editingUserId, userDraft)
-      if (result.error) {
-        setUserError(result.error)
-        return
-      }
-      setFeedback(`Usuario ${result.user.email} actualizado.`)
-    } else {
-      if (userDraft.password.length < 8) {
-        setUserError('La contraseña inicial debe tener al menos 8 caracteres.')
-        return
-      }
-      const result = await createManagedUser(userDraft)
-      if (result.error) {
-        setUserError(result.error)
-        return
-      }
-      setFeedback(`Usuario ${result.user.email} creado.`)
+    } else if (userDraft.password.length < 8) {
+      setUserError('La contraseña inicial debe tener al menos 8 caracteres.')
+      return
     }
 
-    refreshUsers()
-    setEditingUserId('')
-    setUserDraft(EMPTY_USER)
+    if (!usersLoaded) {
+      setUserError('Espera a que se cargue la lista de usuarios antes de guardar.')
+      return
+    }
+
+    setSavingUserId(editingUserId || 'new')
+    try {
+      if (editingUserId) {
+        const editingAccount = users.find((account) => account.id === editingUserId)
+        const updatedUser = await updateManagedUser(editingUserId, {
+          ...userDraft,
+          active: editingAccount.active,
+        })
+        setUsers((currentUsers) => currentUsers.map((account) =>
+          account.id === updatedUser.id ? updatedUser : account,
+        ))
+        if (updatedUser.id === user.id && token) {
+          const rememberSession = window.localStorage.getItem('sonido-vivo-session') !== null
+          login(updatedUser, token, rememberSession)
+        }
+        setFeedback(`Usuario ${updatedUser.email} actualizado.`)
+      } else {
+        const createdUser = await createManagedUser(userDraft)
+        setUsers((currentUsers) => [...currentUsers, createdUser])
+        setFeedback(`Usuario ${createdUser.email} creado.`)
+      }
+      setEditingUserId('')
+      setUserDraft(EMPTY_USER)
+    } catch (error) {
+      setUserError(error.message)
+    } finally {
+      setSavingUserId('')
+    }
   }
 
   const editUser = (account) => {
@@ -211,7 +256,8 @@ export default function AdminPanelPage() {
     setActiveTab('usuarios')
   }
 
-  const toggleUserActive = (account) => {
+  const toggleUserActive = async (account) => {
+    setUserError('')
     if (account.id === user.id) {
       setUserError('No puedes desactivar tu propia cuenta desde esta sesión.')
       return
@@ -221,14 +267,21 @@ export default function AdminPanelPage() {
       setUserError('Debe permanecer al menos un administrador activo.')
       return
     }
-    const result = updateManagedUser(account.id, { active: !account.active })
-    if (result.error) {
-      setUserError(result.error)
-      return
+    setSavingUserId(account.id)
+    try {
+      const updatedUser = await updateManagedUser(account.id, {
+        ...account,
+        active: !account.active,
+      })
+      setUsers((currentUsers) => currentUsers.map((entry) =>
+        entry.id === updatedUser.id ? updatedUser : entry,
+      ))
+      setFeedback(`Usuario ${updatedUser.email}: ${updatedUser.active ? 'activado' : 'desactivado'}.`)
+    } catch (error) {
+      setUserError(error.message)
+    } finally {
+      setSavingUserId('')
     }
-    refreshUsers()
-    setUserError('')
-    setFeedback(`Usuario ${account.email}: ${account.active ? 'desactivado' : 'activado'}.`)
   }
 
   const saveProduct = async (event) => {
@@ -405,40 +458,59 @@ export default function AdminPanelPage() {
               <h2 className="admin-panel-title">{editingUserId ? 'Editar usuario' : 'Agregar funcionario o cliente'}</h2>
               <form className="admin-form" onSubmit={saveUser} noValidate>
                 <label className="seller-control"><span>Nombre</span><input className="form-input" value={userDraft.name} onChange={(event) => setUserDraft((current) => ({ ...current, name: event.target.value }))} required /></label>
-                <label className="seller-control"><span>Teléfono</span><input className="form-input" value={userDraft.phone} onChange={(event) => setUserDraft((current) => ({ ...current, phone: event.target.value }))} /></label>
+                <label className="seller-control"><span>Teléfono</span><input className="form-input" value={userDraft.phone} onChange={(event) => setUserDraft((current) => ({ ...current, phone: event.target.value }))} required /></label>
                 <label className="seller-control"><span>Correo electrónico</span><input className="form-input" type="email" value={userDraft.email} onChange={(event) => setUserDraft((current) => ({ ...current, email: event.target.value }))} required /></label>
                 {!editingUserId && <label className="seller-control"><span>Contraseña inicial</span><input className="form-input" type="password" minLength="8" value={userDraft.password} onChange={(event) => setUserDraft((current) => ({ ...current, password: event.target.value }))} required /></label>}
                 <label className="seller-control"><span>Rol</span><select className="form-input" aria-label="Rol del usuario" value={userDraft.role} onChange={(event) => setUserDraft((current) => ({ ...current, role: event.target.value }))}>{USER_ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select></label>
                 {userError && <p className="form-error" role="alert">{userError}</p>}
                 <div className="flex flex-wrap gap-2">
-                  <button type="submit" className="btn-primary">{editingUserId ? 'Guardar cambios' : 'Crear usuario'}</button>
-                  {editingUserId && <button type="button" className="btn-outline" onClick={() => { setEditingUserId(''); setUserDraft(EMPTY_USER); setUserError('') }}>Cancelar edición</button>}
+                  <button type="submit" className="btn-primary" disabled={!usersLoaded || Boolean(savingUserId)}>
+                    {savingUserId ? 'Guardando…' : editingUserId ? 'Guardar cambios' : 'Crear usuario'}
+                  </button>
+                  {editingUserId && <button type="button" className="btn-outline" disabled={Boolean(savingUserId)} onClick={() => { setEditingUserId(''); setUserDraft(EMPTY_USER); setUserError('') }}>Cancelar edición</button>}
                 </div>
               </form>
             </section>
             <section className="admin-panel admin-user-list-panel">
               <h2 className="admin-panel-title">Usuarios ({users.length})</h2>
-              <div className="admin-inline-filters">
-                <input className="form-input" type="search" aria-label="Buscar usuarios" placeholder="Nombre o correo" value={userQuery} onChange={(event) => setUserQuery(event.target.value)} />
-                <select className="form-input" aria-label="Filtrar por rol" value={userRoleFilter} onChange={(event) => setUserRoleFilter(event.target.value)}><option value="todos">Todos los roles</option>{USER_ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select>
-                <select className="form-input" aria-label="Filtrar por estado de usuario" value={userStatusFilter} onChange={(event) => setUserStatusFilter(event.target.value)}><option value="todos">Todos</option><option value="activos">Activos</option><option value="inactivos">Inactivos</option></select>
-              </div>
-              <div className="admin-list-table-wrap">
-                <table className="seller-table">
-                  <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
-                  <tbody>
-                    {filteredUsers.map((account) => (
-                      <tr key={account.id}>
-                        <td><strong>{account.name}</strong><span className="seller-subline">{account.email}</span></td>
-                        <td>{ROLE_LABELS[account.role]}</td>
-                        <td><span className={`order-status ${account.active ? 'order-status-validado' : 'order-status-rechazado'}`}>{account.active ? 'Activo' : 'Inactivo'}</span></td>
-                        <td><div className="admin-row-actions"><button type="button" className="auth-inline-link" onClick={() => editUser(account)}>Editar</button><button type="button" className="auth-inline-link" disabled={account.id === user.id} onClick={() => toggleUserActive(account)}>{account.active ? 'Desactivar' : 'Activar'}</button></div></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {filteredUsers.length === 0 && <p className="py-5 text-sm text-costa-sage">Sin usuarios para estos filtros.</p>}
-              </div>
+              {usersLoading ? (
+                <p className="py-5 text-sm text-costa-deep" role="status">Cargando usuarios…</p>
+              ) : usersError ? (
+                <div className="py-5 text-sm text-red-700" role="alert">
+                  <p>No se pudieron cargar los usuarios: {usersError}</p>
+                  <button type="button" className="auth-inline-link mt-2" onClick={() => {
+                    setUsersError('')
+                    setUsersLoading(true)
+                    setUsersReloadKey((key) => key + 1)
+                  }}>
+                    Reintentar
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="admin-inline-filters">
+                    <input className="form-input" type="search" aria-label="Buscar usuarios" placeholder="Nombre o correo" value={userQuery} onChange={(event) => setUserQuery(event.target.value)} />
+                    <select className="form-input" aria-label="Filtrar por rol" value={userRoleFilter} onChange={(event) => setUserRoleFilter(event.target.value)}><option value="todos">Todos los roles</option>{USER_ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select>
+                    <select className="form-input" aria-label="Filtrar por estado de usuario" value={userStatusFilter} onChange={(event) => setUserStatusFilter(event.target.value)}><option value="todos">Todos</option><option value="activos">Activos</option><option value="inactivos">Inactivos</option></select>
+                  </div>
+                  <div className="admin-list-table-wrap">
+                    <table className="seller-table">
+                      <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+                      <tbody>
+                        {filteredUsers.map((account) => (
+                          <tr key={account.id}>
+                            <td><strong>{account.name}</strong><span className="seller-subline">{account.email}</span></td>
+                            <td>{ROLE_LABELS[account.role]}</td>
+                            <td><span className={`order-status ${account.active ? 'order-status-validado' : 'order-status-rechazado'}`}>{account.active ? 'Activo' : 'Inactivo'}</span></td>
+                            <td><div className="admin-row-actions"><button type="button" className="auth-inline-link" disabled={Boolean(savingUserId)} onClick={() => editUser(account)}>Editar</button><button type="button" className="auth-inline-link" disabled={account.id === user.id || Boolean(savingUserId)} onClick={() => toggleUserActive(account)}>{account.active ? 'Desactivar' : 'Activar'}</button></div></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {filteredUsers.length === 0 && <p className="py-5 text-sm text-costa-sage">Sin usuarios para estos filtros.</p>}
+                  </div>
+                </>
+              )}
             </section>
           </div>
         </section>
