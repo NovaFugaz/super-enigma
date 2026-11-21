@@ -3,17 +3,15 @@ import { useAuth } from '../../hooks/useAuth.js'
 import { useCatalog } from '../../hooks/useCatalog.js'
 import {
   createManagedUser,
-  listManagedUsers,
+  fetchManagedUsers,
   updateManagedUser,
   USER_ROLES,
-} from '../../services/mockAuth.js'
-import { getOrders } from '../../services/mockOrders.js'
-import { downloadSalesReport } from '../../services/salesReport.js'
+} from '../../services/userApi.js'
+import { downloadSalesReport, fetchSalesReport } from '../../services/salesReport.js'
 import { formatCLP } from '../../utils/format.js'
 
 const ROLE_LABELS = { customer: 'Cliente', seller: 'Vendedor', admin: 'Administrador' }
 const TAB_LABELS = { dashboard: 'Dashboard', usuarios: 'Usuarios y roles', productos: 'Productos', inventario: 'Inventario' }
-const DASHBOARD_MOUNTED_AT = Date.now()
 const EMPTY_USER = { name: '', phone: '', email: '', password: '', role: 'customer' }
 const EMPTY_PRODUCT = {
   codigo: '', categoria: 'guitarras-acusticas', nombre: '', marca: '', modelo: '',
@@ -30,44 +28,106 @@ function readThreshold() {
 }
 
 export default function AdminPanelPage() {
-  const { user } = useAuth()
+  const { user, token, login } = useAuth()
   const {
     adminProducts,
     categories,
+    loadStaffProducts,
+    loading: catalogLoading,
     createProduct,
     deactivateProduct,
     updateProduct,
     updateStock,
   } = useCatalog()
   const [activeTab, setActiveTab] = useState('dashboard')
-  const [users, setUsers] = useState(listManagedUsers)
+  const [users, setUsers] = useState([])
   const [userDraft, setUserDraft] = useState(EMPTY_USER)
   const [editingUserId, setEditingUserId] = useState('')
   const [userQuery, setUserQuery] = useState('')
   const [userRoleFilter, setUserRoleFilter] = useState('todos')
   const [userStatusFilter, setUserStatusFilter] = useState('todos')
   const [userError, setUserError] = useState('')
+  const [usersLoading, setUsersLoading] = useState(true)
+  const [usersLoaded, setUsersLoaded] = useState(false)
+  const [usersError, setUsersError] = useState('')
+  const [usersReloadKey, setUsersReloadKey] = useState(0)
+  const [savingUserId, setSavingUserId] = useState('')
   const [productDraft, setProductDraft] = useState(EMPTY_PRODUCT)
   const [editingProductCode, setEditingProductCode] = useState('')
   const [productQuery, setProductQuery] = useState('')
   const [productError, setProductError] = useState('')
+  const [staffProductsError, setStaffProductsError] = useState('')
+  const [staffProductsLoaded, setStaffProductsLoaded] = useState(false)
+  const [staffProductsReloadKey, setStaffProductsReloadKey] = useState(0)
+  const [productSaving, setProductSaving] = useState(false)
   const [inventoryQuery, setInventoryQuery] = useState('')
   const [stockDrafts, setStockDrafts] = useState({})
   const [threshold, setThreshold] = useState(readThreshold)
-  const [orders, setOrders] = useState(getOrders)
   const [period, setPeriod] = useState('30')
+  const [salesReport, setSalesReport] = useState(null)
+  const [reportLoading, setReportLoading] = useState(true)
+  const [reportError, setReportError] = useState('')
+  const [reportReloadKey, setReportReloadKey] = useState(0)
+  const [exportingReport, setExportingReport] = useState(false)
+  const [reportExportError, setReportExportError] = useState('')
   const [feedback, setFeedback] = useState('')
 
   useEffect(() => {
-    const refreshOrders = () => setOrders(getOrders())
-    refreshOrders()
-    window.addEventListener('sonido-vivo:order-status-changed', refreshOrders)
-    window.addEventListener('storage', refreshOrders)
+    let active = true
+    fetchManagedUsers()
+      .then((loadedUsers) => {
+        if (active) {
+          setUsers(loadedUsers)
+          setUsersLoaded(true)
+          setUsersError('')
+        }
+      })
+      .catch((error) => {
+        if (active) setUsersError(error.message)
+      })
+      .finally(() => {
+        if (active) setUsersLoading(false)
+      })
     return () => {
-      window.removeEventListener('sonido-vivo:order-status-changed', refreshOrders)
-      window.removeEventListener('storage', refreshOrders)
+      active = false
     }
-  }, [])
+  }, [usersReloadKey])
+
+  useEffect(() => {
+    if (catalogLoading) return undefined
+    let active = true
+    loadStaffProducts()
+      .then(() => {
+        if (active) {
+          setStaffProductsLoaded(true)
+          setStaffProductsError('')
+        }
+      })
+      .catch((error) => {
+        if (active) setStaffProductsError(error.message)
+      })
+    return () => {
+      active = false
+    }
+  }, [catalogLoading, loadStaffProducts, staffProductsReloadKey])
+
+  const reportDays = period === 'all' ? undefined : Number(period)
+  useEffect(() => {
+    let active = true
+    fetchSalesReport(reportDays)
+      .then((report) => {
+        if (active) setSalesReport(report)
+      })
+      .catch((error) => {
+        if (active) setReportError(error.message)
+      })
+      .finally(() => {
+        if (active) setReportLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [reportDays, reportReloadKey])
 
   const filteredUsers = useMemo(() => {
     const query = userQuery.trim().toLowerCase()
@@ -94,55 +154,52 @@ export default function AdminPanelPage() {
     )
   }, [adminProducts, inventoryQuery])
 
-  const salesOrders = useMemo(() => {
-    const cutoff = period === 'all' ? 0 : DASHBOARD_MOUNTED_AT - Number(period) * 86_400_000
-    return orders.filter((order) =>
-      order.status !== 'rechazado' &&
-      (order.demo || order.payment?.status === 'aprobado') &&
-      new Date(order.createdAt).getTime() >= cutoff,
-    )
-  }, [orders, period])
-
-  const salesTotal = salesOrders.reduce((sum, order) => sum + order.total, 0)
-  const salesUnits = salesOrders.reduce(
-    (sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
-    0,
-  )
-  const topProducts = useMemo(() => {
-    const totals = new Map()
-    salesOrders.forEach((order) => order.items.forEach((item) => {
-      const current = totals.get(item.code) ?? { code: item.code, name: item.name, units: 0, sales: 0 }
-      current.units += item.quantity
-      current.sales += item.lineTotal
-      totals.set(item.code, current)
-    }))
-    return [...totals.values()].sort((left, right) => right.sales - left.sales).slice(0, 5)
-  }, [salesOrders])
-
-  const salesByDate = useMemo(() => {
-    const totals = new Map()
-    salesOrders.forEach((order) => {
-      const date = new Date(order.createdAt).toLocaleDateString('es-CL')
-      totals.set(date, (totals.get(date) ?? 0) + order.total)
-    })
-    return [...totals.entries()].slice(-14)
-  }, [salesOrders])
+  const salesTotal = salesReport?.totalSales ?? 0
+  const salesUnits = salesReport?.unitsSold ?? 0
+  const salesOrdersCount = salesReport?.orderCount ?? 0
+  const topProducts = salesReport?.topProducts ?? []
+  const salesByDate = (salesReport?.salesByDate ?? []).map(({ date, total }) => {
+    const [year, month, day] = date.split('-')
+    return [`${day}/${month}/${year}`, total]
+  })
   const maxDailySales = Math.max(1, ...salesByDate.map(([, amount]) => amount))
   const lowStockCount = adminProducts.filter((product) => product.active !== false && product.stock <= threshold).length
   const activeUsersCount = users.filter((account) => account.active).length
 
-  const refreshUsers = () => setUsers(listManagedUsers())
+  const handleReportPeriodChange = (event) => {
+    setPeriod(event.target.value)
+    setReportLoading(true)
+    setReportError('')
+    setReportExportError('')
+  }
+
+  const handleReportExport = async () => {
+    setExportingReport(true)
+    setReportExportError('')
+    try {
+      await downloadSalesReport(reportDays)
+    } catch (error) {
+      setReportExportError(error.message)
+    } finally {
+      setExportingReport(false)
+    }
+  }
 
   const saveUser = async (event) => {
     event.preventDefault()
     setUserError('')
-    if (!userDraft.name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userDraft.email.trim())) {
-      setUserError('Ingresa un nombre y un correo válido.')
+    if (userDraft.name.trim().length < 2 || !userDraft.phone.trim() ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userDraft.email.trim())) {
+      setUserError('Ingresa un nombre, teléfono y correo válido.')
       return
     }
 
     if (editingUserId) {
       const editingAccount = users.find((account) => account.id === editingUserId)
+      if (!editingAccount) {
+        setUserError('No se encontró el usuario seleccionado.')
+        return
+      }
       const activeAdminCount = users.filter((account) => account.active && account.role === 'admin').length
       if (editingUserId === user.id && userDraft.role !== user.role) {
         setUserError('No puedes cambiar tu propio rol desde esta sesión.')
@@ -152,28 +209,44 @@ export default function AdminPanelPage() {
         setUserError('Debe permanecer al menos un administrador activo.')
         return
       }
-      const result = updateManagedUser(editingUserId, userDraft)
-      if (result.error) {
-        setUserError(result.error)
-        return
-      }
-      setFeedback(`Usuario ${result.user.email} actualizado.`)
-    } else {
-      if (userDraft.password.length < 8) {
-        setUserError('La contraseña inicial debe tener al menos 8 caracteres.')
-        return
-      }
-      const result = await createManagedUser(userDraft)
-      if (result.error) {
-        setUserError(result.error)
-        return
-      }
-      setFeedback(`Usuario ${result.user.email} creado.`)
+    } else if (userDraft.password.length < 8) {
+      setUserError('La contraseña inicial debe tener al menos 8 caracteres.')
+      return
     }
 
-    refreshUsers()
-    setEditingUserId('')
-    setUserDraft(EMPTY_USER)
+    if (!usersLoaded) {
+      setUserError('Espera a que se cargue la lista de usuarios antes de guardar.')
+      return
+    }
+
+    setSavingUserId(editingUserId || 'new')
+    try {
+      if (editingUserId) {
+        const editingAccount = users.find((account) => account.id === editingUserId)
+        const updatedUser = await updateManagedUser(editingUserId, {
+          ...userDraft,
+          active: editingAccount.active,
+        })
+        setUsers((currentUsers) => currentUsers.map((account) =>
+          account.id === updatedUser.id ? updatedUser : account,
+        ))
+        if (updatedUser.id === user.id && token) {
+          const rememberSession = window.localStorage.getItem('sonido-vivo-session') !== null
+          login(updatedUser, token, rememberSession)
+        }
+        setFeedback(`Usuario ${updatedUser.email} actualizado.`)
+      } else {
+        const createdUser = await createManagedUser(userDraft)
+        setUsers((currentUsers) => [...currentUsers, createdUser])
+        setFeedback(`Usuario ${createdUser.email} creado.`)
+      }
+      setEditingUserId('')
+      setUserDraft(EMPTY_USER)
+    } catch (error) {
+      setUserError(error.message)
+    } finally {
+      setSavingUserId('')
+    }
   }
 
   const editUser = (account) => {
@@ -183,7 +256,8 @@ export default function AdminPanelPage() {
     setActiveTab('usuarios')
   }
 
-  const toggleUserActive = (account) => {
+  const toggleUserActive = async (account) => {
+    setUserError('')
     if (account.id === user.id) {
       setUserError('No puedes desactivar tu propia cuenta desde esta sesión.')
       return
@@ -193,29 +267,41 @@ export default function AdminPanelPage() {
       setUserError('Debe permanecer al menos un administrador activo.')
       return
     }
-    const result = updateManagedUser(account.id, { active: !account.active })
-    if (result.error) {
-      setUserError(result.error)
-      return
+    setSavingUserId(account.id)
+    try {
+      const updatedUser = await updateManagedUser(account.id, {
+        ...account,
+        active: !account.active,
+      })
+      setUsers((currentUsers) => currentUsers.map((entry) =>
+        entry.id === updatedUser.id ? updatedUser : entry,
+      ))
+      setFeedback(`Usuario ${updatedUser.email}: ${updatedUser.active ? 'activado' : 'desactivado'}.`)
+    } catch (error) {
+      setUserError(error.message)
+    } finally {
+      setSavingUserId('')
     }
-    refreshUsers()
-    setUserError('')
-    setFeedback(`Usuario ${account.email}: ${account.active ? 'desactivado' : 'activado'}.`)
   }
 
-  const saveProduct = (event) => {
+  const saveProduct = async (event) => {
     event.preventDefault()
     setProductError('')
-    const result = editingProductCode
-      ? updateProduct(editingProductCode, productDraft)
-      : createProduct(productDraft)
-    if (result.error) {
-      setProductError(result.error)
-      return
+    setProductSaving(true)
+    try {
+      const result = editingProductCode
+        ? await updateProduct(editingProductCode, productDraft)
+        : await createProduct(productDraft)
+      if (result.error) {
+        setProductError(result.error)
+        return
+      }
+      setFeedback(`Producto ${result.product.codigo} ${editingProductCode ? 'actualizado' : 'creado'}.`)
+      setProductDraft(EMPTY_PRODUCT)
+      setEditingProductCode('')
+    } finally {
+      setProductSaving(false)
     }
-    setFeedback(`Producto ${result.product.codigo} ${editingProductCode ? 'actualizado' : 'creado'}.`)
-    setProductDraft(EMPTY_PRODUCT)
-    setEditingProductCode('')
   }
 
   const editProduct = (product) => {
@@ -225,8 +311,8 @@ export default function AdminPanelPage() {
     setActiveTab('productos')
   }
 
-  const handleDeactivateProduct = (product) => {
-    const result = deactivateProduct(product.codigo)
+  const handleDeactivateProduct = async (product) => {
+    const result = await deactivateProduct(product.codigo)
     if (result.error) {
       setProductError(result.error)
       return
@@ -234,9 +320,9 @@ export default function AdminPanelPage() {
     setFeedback(`Producto ${product.codigo} desactivado del catálogo.`)
   }
 
-  const saveStock = (product) => {
+  const saveStock = async (product) => {
     const stock = Number(stockDrafts[product.codigo] ?? product.stock)
-    const result = updateStock(product.codigo, stock)
+    const result = await updateStock(product.codigo, stock)
     if (result.error) {
       setFeedback(result.error)
       return
@@ -278,13 +364,27 @@ export default function AdminPanelPage() {
         ))}
       </div>
       {feedback && <p className="mt-4 text-sm text-costa-deep" role="status" aria-live="polite">{feedback}</p>}
+      {!staffProductsLoaded && !staffProductsError && (
+        <p className="mt-4 text-sm text-costa-deep" role="status">Cargando catálogo de administración…</p>
+      )}
+      {staffProductsError && (
+        <div className="mt-4 text-sm text-red-700" role="alert">
+          <p>No se pudo cargar el catálogo de administración: {staffProductsError}</p>
+          <button type="button" className="auth-inline-link mt-2" onClick={() => {
+            setStaffProductsError('')
+            setStaffProductsReloadKey((key) => key + 1)
+          }}>
+            Reintentar
+          </button>
+        </div>
+      )}
 
       {activeTab === 'dashboard' && (
         <section className="admin-section" role="tabpanel" aria-label="Dashboard">
           <div className="admin-dashboard-toolbar">
             <label className="seller-control admin-period-control">
               <span>Período de ventas</span>
-              <select className="form-input" value={period} onChange={(event) => setPeriod(event.target.value)}>
+              <select className="form-input" value={period} onChange={handleReportPeriodChange}>
                 <option value="7">Últimos 7 días</option>
                 <option value="30">Últimos 30 días</option>
                 <option value="90">Últimos 90 días</option>
@@ -292,44 +392,62 @@ export default function AdminPanelPage() {
                 <option value="all">Todo el historial</option>
               </select>
             </label>
-            <button type="button" className="btn-primary" onClick={() => downloadSalesReport(salesOrders)}>
-              Exportar reporte CSV
+            <button type="button" className="btn-primary" disabled={reportLoading || exportingReport} onClick={handleReportExport}>
+              {exportingReport ? 'Exportando…' : 'Exportar reporte CSV'}
             </button>
           </div>
-          <div className="seller-metrics mt-4">
-            <div className="seller-metric"><span>Ventas del período</span><strong>{formatCLP(salesTotal)}</strong></div>
-            <div className="seller-metric"><span>Pedidos considerados</span><strong>{salesOrders.length}</strong></div>
-            <div className="seller-metric"><span>Unidades vendidas</span><strong>{salesUnits}</strong></div>
-            <div className="seller-metric"><span>Usuarios activos</span><strong>{activeUsersCount}</strong></div>
-            <div className="seller-metric"><span>Productos activos</span><strong>{adminProducts.filter((product) => product.active !== false).length}</strong></div>
-            <div className="seller-metric"><span>Alertas de stock</span><strong>{lowStockCount}</strong></div>
-          </div>
+          {reportExportError && <p className="mt-3 text-sm text-red-700" role="alert">{reportExportError}</p>}
+          {reportLoading ? (
+            <p className="mt-5 text-sm text-costa-deep" role="status">Cargando reporte de ventas…</p>
+          ) : reportError ? (
+            <div className="mt-5 text-sm text-red-700" role="alert">
+              <p>No se pudo cargar el reporte: {reportError}</p>
+              <button type="button" className="auth-inline-link mt-2" onClick={() => {
+                setReportError('')
+                setReportLoading(true)
+                setReportReloadKey((key) => key + 1)
+              }}>
+                Reintentar
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="seller-metrics mt-4">
+                <div className="seller-metric"><span>Ventas del período</span><strong>{formatCLP(salesTotal)}</strong></div>
+                <div className="seller-metric"><span>Pedidos considerados</span><strong>{salesOrdersCount}</strong></div>
+                <div className="seller-metric"><span>Unidades vendidas</span><strong>{salesUnits}</strong></div>
+                <div className="seller-metric"><span>Usuarios activos</span><strong>{activeUsersCount}</strong></div>
+                <div className="seller-metric"><span>Productos activos</span><strong>{adminProducts.filter((product) => product.active !== false).length}</strong></div>
+                <div className="seller-metric"><span>Alertas de stock</span><strong>{lowStockCount}</strong></div>
+              </div>
 
-          <div className="admin-dashboard-grid mt-5">
-            <section className="admin-panel">
-              <h2 className="admin-panel-title">Ventas por fecha</h2>
-              {salesByDate.length === 0 ? <p className="text-sm text-costa-sage">Sin ventas en este período.</p> : (
-                <div className="admin-sales-chart" aria-label="Gráfico de ventas por fecha">
-                  {salesByDate.map(([date, amount]) => (
-                    <div className="admin-sales-column" key={date} title={`${date}: ${formatCLP(amount)}`}>
-                      <span className="admin-sales-bar" style={{ height: `${Math.max(6, amount / maxDailySales * 100)}%` }} />
-                      <span className="admin-sales-date">{date}</span>
+              <div className="admin-dashboard-grid mt-5">
+                <section className="admin-panel">
+                  <h2 className="admin-panel-title">Ventas por fecha</h2>
+                  {salesByDate.length === 0 ? <p className="text-sm text-costa-sage">Sin ventas en este período.</p> : (
+                    <div className="admin-sales-chart" aria-label="Gráfico de ventas por fecha">
+                      {salesByDate.map(([date, amount]) => (
+                        <div className="admin-sales-column" key={date} title={`${date}: ${formatCLP(amount)}`}>
+                          <span className="admin-sales-bar" style={{ height: `${Math.max(6, amount / maxDailySales * 100)}%` }} />
+                          <span className="admin-sales-date">{date}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </section>
-            <section className="admin-panel">
-              <h2 className="admin-panel-title">Productos top</h2>
-              {topProducts.length === 0 ? <p className="text-sm text-costa-sage">Sin ventas en este período.</p> : (
-                <ol className="admin-top-products">
-                  {topProducts.map((product, index) => (
-                    <li key={product.code}><span>{index + 1}. {product.name}<small>{product.units} unidades</small></span><strong>{formatCLP(product.sales)}</strong></li>
-                  ))}
-                </ol>
-              )}
-            </section>
-          </div>
+                  )}
+                </section>
+                <section className="admin-panel">
+                  <h2 className="admin-panel-title">Productos top</h2>
+                  {topProducts.length === 0 ? <p className="text-sm text-costa-sage">Sin ventas en este período.</p> : (
+                    <ol className="admin-top-products">
+                      {topProducts.map((product, index) => (
+                        <li key={product.code}><span>{index + 1}. {product.name}<small>{product.units} unidades</small></span><strong>{formatCLP(product.revenue)}</strong></li>
+                      ))}
+                    </ol>
+                  )}
+                </section>
+              </div>
+            </>
+          )}
         </section>
       )}
 
@@ -340,40 +458,59 @@ export default function AdminPanelPage() {
               <h2 className="admin-panel-title">{editingUserId ? 'Editar usuario' : 'Agregar funcionario o cliente'}</h2>
               <form className="admin-form" onSubmit={saveUser} noValidate>
                 <label className="seller-control"><span>Nombre</span><input className="form-input" value={userDraft.name} onChange={(event) => setUserDraft((current) => ({ ...current, name: event.target.value }))} required /></label>
-                <label className="seller-control"><span>Teléfono</span><input className="form-input" value={userDraft.phone} onChange={(event) => setUserDraft((current) => ({ ...current, phone: event.target.value }))} /></label>
+                <label className="seller-control"><span>Teléfono</span><input className="form-input" value={userDraft.phone} onChange={(event) => setUserDraft((current) => ({ ...current, phone: event.target.value }))} required /></label>
                 <label className="seller-control"><span>Correo electrónico</span><input className="form-input" type="email" value={userDraft.email} onChange={(event) => setUserDraft((current) => ({ ...current, email: event.target.value }))} required /></label>
                 {!editingUserId && <label className="seller-control"><span>Contraseña inicial</span><input className="form-input" type="password" minLength="8" value={userDraft.password} onChange={(event) => setUserDraft((current) => ({ ...current, password: event.target.value }))} required /></label>}
                 <label className="seller-control"><span>Rol</span><select className="form-input" aria-label="Rol del usuario" value={userDraft.role} onChange={(event) => setUserDraft((current) => ({ ...current, role: event.target.value }))}>{USER_ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select></label>
                 {userError && <p className="form-error" role="alert">{userError}</p>}
                 <div className="flex flex-wrap gap-2">
-                  <button type="submit" className="btn-primary">{editingUserId ? 'Guardar cambios' : 'Crear usuario'}</button>
-                  {editingUserId && <button type="button" className="btn-outline" onClick={() => { setEditingUserId(''); setUserDraft(EMPTY_USER); setUserError('') }}>Cancelar edición</button>}
+                  <button type="submit" className="btn-primary" disabled={!usersLoaded || Boolean(savingUserId)}>
+                    {savingUserId ? 'Guardando…' : editingUserId ? 'Guardar cambios' : 'Crear usuario'}
+                  </button>
+                  {editingUserId && <button type="button" className="btn-outline" disabled={Boolean(savingUserId)} onClick={() => { setEditingUserId(''); setUserDraft(EMPTY_USER); setUserError('') }}>Cancelar edición</button>}
                 </div>
               </form>
             </section>
             <section className="admin-panel admin-user-list-panel">
               <h2 className="admin-panel-title">Usuarios ({users.length})</h2>
-              <div className="admin-inline-filters">
-                <input className="form-input" type="search" aria-label="Buscar usuarios" placeholder="Nombre o correo" value={userQuery} onChange={(event) => setUserQuery(event.target.value)} />
-                <select className="form-input" aria-label="Filtrar por rol" value={userRoleFilter} onChange={(event) => setUserRoleFilter(event.target.value)}><option value="todos">Todos los roles</option>{USER_ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select>
-                <select className="form-input" aria-label="Filtrar por estado de usuario" value={userStatusFilter} onChange={(event) => setUserStatusFilter(event.target.value)}><option value="todos">Todos</option><option value="activos">Activos</option><option value="inactivos">Inactivos</option></select>
-              </div>
-              <div className="admin-list-table-wrap">
-                <table className="seller-table">
-                  <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
-                  <tbody>
-                    {filteredUsers.map((account) => (
-                      <tr key={account.id}>
-                        <td><strong>{account.name}</strong><span className="seller-subline">{account.email}</span></td>
-                        <td>{ROLE_LABELS[account.role]}</td>
-                        <td><span className={`order-status ${account.active ? 'order-status-validado' : 'order-status-rechazado'}`}>{account.active ? 'Activo' : 'Inactivo'}</span></td>
-                        <td><div className="admin-row-actions"><button type="button" className="auth-inline-link" onClick={() => editUser(account)}>Editar</button><button type="button" className="auth-inline-link" disabled={account.id === user.id} onClick={() => toggleUserActive(account)}>{account.active ? 'Desactivar' : 'Activar'}</button></div></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {filteredUsers.length === 0 && <p className="py-5 text-sm text-costa-sage">Sin usuarios para estos filtros.</p>}
-              </div>
+              {usersLoading ? (
+                <p className="py-5 text-sm text-costa-deep" role="status">Cargando usuarios…</p>
+              ) : usersError ? (
+                <div className="py-5 text-sm text-red-700" role="alert">
+                  <p>No se pudieron cargar los usuarios: {usersError}</p>
+                  <button type="button" className="auth-inline-link mt-2" onClick={() => {
+                    setUsersError('')
+                    setUsersLoading(true)
+                    setUsersReloadKey((key) => key + 1)
+                  }}>
+                    Reintentar
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="admin-inline-filters">
+                    <input className="form-input" type="search" aria-label="Buscar usuarios" placeholder="Nombre o correo" value={userQuery} onChange={(event) => setUserQuery(event.target.value)} />
+                    <select className="form-input" aria-label="Filtrar por rol" value={userRoleFilter} onChange={(event) => setUserRoleFilter(event.target.value)}><option value="todos">Todos los roles</option>{USER_ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select>
+                    <select className="form-input" aria-label="Filtrar por estado de usuario" value={userStatusFilter} onChange={(event) => setUserStatusFilter(event.target.value)}><option value="todos">Todos</option><option value="activos">Activos</option><option value="inactivos">Inactivos</option></select>
+                  </div>
+                  <div className="admin-list-table-wrap">
+                    <table className="seller-table">
+                      <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+                      <tbody>
+                        {filteredUsers.map((account) => (
+                          <tr key={account.id}>
+                            <td><strong>{account.name}</strong><span className="seller-subline">{account.email}</span></td>
+                            <td>{ROLE_LABELS[account.role]}</td>
+                            <td><span className={`order-status ${account.active ? 'order-status-validado' : 'order-status-rechazado'}`}>{account.active ? 'Activo' : 'Inactivo'}</span></td>
+                            <td><div className="admin-row-actions"><button type="button" className="auth-inline-link" disabled={Boolean(savingUserId)} onClick={() => editUser(account)}>Editar</button><button type="button" className="auth-inline-link" disabled={account.id === user.id || Boolean(savingUserId)} onClick={() => toggleUserActive(account)}>{account.active ? 'Desactivar' : 'Activar'}</button></div></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {filteredUsers.length === 0 && <p className="py-5 text-sm text-costa-sage">Sin usuarios para estos filtros.</p>}
+                  </div>
+                </>
+              )}
             </section>
           </div>
         </section>
@@ -396,7 +533,7 @@ export default function AdminPanelPage() {
                 {!editingProductCode && <label className="seller-control"><span>Stock inicial</span><input className="form-input" type="number" min="0" step="1" value={productDraft.stock} onChange={(event) => setProductDraft((current) => ({ ...current, stock: event.target.value }))} required /></label>}
                 <label className="seller-control"><span>Descripción</span><textarea className="form-input" rows="3" value={productDraft.descripcion} onChange={(event) => setProductDraft((current) => ({ ...current, descripcion: event.target.value }))} /></label>
                 {productError && <p className="form-error" role="alert">{productError}</p>}
-                <div className="flex flex-wrap gap-2"><button type="submit" className="btn-primary">{editingProductCode ? 'Guardar producto' : 'Crear producto'}</button>{editingProductCode && <button type="button" className="btn-outline" onClick={() => { setEditingProductCode(''); setProductDraft(EMPTY_PRODUCT); setProductError('') }}>Cancelar</button>}</div>
+                <div className="flex flex-wrap gap-2"><button type="submit" className="btn-primary" disabled={!staffProductsLoaded || productSaving}>{productSaving ? 'Guardando…' : editingProductCode ? 'Guardar producto' : 'Crear producto'}</button>{editingProductCode && <button type="button" className="btn-outline" onClick={() => { setEditingProductCode(''); setProductDraft(EMPTY_PRODUCT); setProductError('') }}>Cancelar</button>}</div>
               </form>
             </section>
             <section className="admin-panel admin-product-list-panel">
@@ -410,7 +547,7 @@ export default function AdminPanelPage() {
                       <td><strong>{product.nombre}</strong><span className="seller-subline">{product.codigo} · {product.marca}</span></td>
                       <td>{product.stock}</td>
                       <td><span className={`order-status ${product.active === false ? 'order-status-rechazado' : 'order-status-validado'}`}>{product.active === false ? 'Inactivo' : 'Activo'}</span></td>
-                      <td><div className="admin-row-actions"><button type="button" className="auth-inline-link" onClick={() => editProduct(product)}>Editar</button>{product.active !== false && <button type="button" className="auth-inline-link" onClick={() => handleDeactivateProduct(product)}>Desactivar</button>}</div></td>
+                      <td><div className="admin-row-actions"><button type="button" className="auth-inline-link" disabled={!staffProductsLoaded} onClick={() => editProduct(product)}>Editar</button>{product.active !== false && <button type="button" className="auth-inline-link" disabled={!staffProductsLoaded} onClick={() => handleDeactivateProduct(product)}>Desactivar</button>}</div></td>
                     </tr>
                   ))}</tbody>
                 </table>

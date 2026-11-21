@@ -6,6 +6,18 @@ import { apiRequest, ApiError } from '../services/api.js'
 import { loginAccount, registerAccount } from '../services/authApi.js'
 import { fetchProducts, toCatalogProduct } from '../services/catalogApi.js'
 import {
+  createStaffProduct,
+  deactivateStaffProduct,
+  fetchStaffProducts,
+  updateProductStock,
+  updateStaffProduct,
+} from '../services/productApi.js'
+import {
+  createManagedUser,
+  fetchManagedUsers,
+  updateManagedUser,
+} from '../services/userApi.js'
+import {
   createPaidOrder,
   fetchMyOrders,
   fetchStaffOrders,
@@ -317,5 +329,109 @@ describe('backend API integration services', () => {
       method: 'PATCH',
       body: JSON.stringify({ status: 'VALIDADO' }),
     })
+  })
+
+  it('uses staff product endpoints for listing, CRUD and inventory updates', async () => {
+    const backendProduct = {
+      code: 'ADM-001',
+      category: 'guitarras-acusticas',
+      name: 'Guitarra Admin',
+      brand: 'Demo',
+      model: 'ADM-1',
+      price: 50000,
+      stock: 4,
+      description: 'Producto de prueba',
+      image: '',
+      active: true,
+    }
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([backendProduct]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(backendProduct), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ...backendProduct, stock: 8 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ...backendProduct, name: 'Guitarra Editada' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 })))
+
+    await expect(fetchStaffProducts()).resolves.toMatchObject([{ codigo: 'ADM-001', stock: 4 }])
+    await createStaffProduct({
+      codigo: 'ADM-001',
+      categoria: 'guitarras-acusticas',
+      nombre: 'Guitarra Admin',
+      marca: 'Demo',
+      modelo: 'ADM-1',
+      precio: 50000,
+      stock: 4,
+      descripcion: 'Producto de prueba',
+      image: '',
+      active: true,
+    })
+    await expect(updateProductStock('ADM-001', 8)).resolves.toMatchObject({ stock: 8 })
+    await expect(updateStaffProduct('ADM-001', {
+      ...toCatalogProduct(backendProduct),
+      nombre: 'Guitarra Editada',
+    })).resolves.toMatchObject({ nombre: 'Guitarra Editada' })
+    await deactivateStaffProduct('ADM-001')
+
+    expect(fetch.mock.calls.map(([url, options]) => [url, options.method ?? 'GET'])).toEqual([
+      ['http://localhost:8080/api/staff/products?includeInactive=true', 'GET'],
+      ['http://localhost:8080/api/staff/products', 'POST'],
+      ['http://localhost:8080/api/staff/products/ADM-001/stock', 'PATCH'],
+      ['http://localhost:8080/api/staff/products/ADM-001', 'PUT'],
+      ['http://localhost:8080/api/staff/products/ADM-001', 'DELETE'],
+    ])
+    expect(fetch.mock.calls[1][1].body).toContain('"code":"ADM-001"')
+    expect(fetch.mock.calls[2][1].body).toBe(JSON.stringify({ stock: 8 }))
+  })
+
+  it('lists, creates and updates admin-managed users with mapped roles', async () => {
+    const backendUser = (role, active = true) => ({
+      id: 8,
+      name: 'Usuario Demo',
+      phone: '+56 9 1111 1111',
+      email: 'usuario@example.cl',
+      role,
+      active,
+    })
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([backendUser('SELLER')]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(backendUser('CUSTOMER')), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(backendUser('CUSTOMER', false)), { status: 200 })))
+
+    await expect(fetchManagedUsers()).resolves.toMatchObject([
+      { id: '8', role: 'seller', active: true },
+    ])
+    await expect(createManagedUser({
+      name: 'Usuario Demo',
+      phone: '+56 9 1111 1111',
+      email: 'usuario@example.cl',
+      password: 'Password123!',
+      role: 'customer',
+    })).resolves.toMatchObject({ id: '8', role: 'customer', active: true })
+    await expect(updateManagedUser('8', {
+      name: 'Usuario Demo',
+      phone: '+56 9 1111 1111',
+      email: 'usuario@example.cl',
+      role: 'customer',
+      active: false,
+    })).resolves.toMatchObject({ id: '8', role: 'customer', active: false })
+
+    expect(fetch.mock.calls.map(([url, options]) => [url, options.method ?? 'GET'])).toEqual([
+      ['http://localhost:8080/api/admin', 'GET'],
+      ['http://localhost:8080/api/admin', 'POST'],
+      ['http://localhost:8080/api/admin/8', 'PUT'],
+    ])
+    expect(fetch.mock.calls[1][1].body).toBe(JSON.stringify({
+      name: 'Usuario Demo',
+      phone: '+56 9 1111 1111',
+      email: 'usuario@example.cl',
+      password: 'Password123!',
+      role: 'CUSTOMER',
+    }))
+    expect(fetch.mock.calls[2][1].body).toBe(JSON.stringify({
+      name: 'Usuario Demo',
+      phone: '+56 9 1111 1111',
+      email: 'usuario@example.cl',
+      role: 'CUSTOMER',
+      active: false,
+    }))
   })
 })
