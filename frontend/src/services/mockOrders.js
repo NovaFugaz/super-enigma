@@ -1,9 +1,10 @@
 import { PRODUCTS, getProductByCode } from '../data/catalog.js'
+import { notifyOrderStatusChange, ORDER_STATUS_EVENT } from './orderNotifications.js'
 
 const USERS_KEY = 'sonido-vivo-users'
 const ORDERS_KEY = 'sonido-vivo-orders'
 const STOCK_KEY = 'sonido-vivo-stock'
-export const ORDER_STATUS_EVENT = 'sonido-vivo:order-status-changed'
+export { ORDER_STATUS_EVENT }
 
 export const ORDER_STATUSES = ['pendiente', 'en_proceso', 'validado', 'enviado', 'entregado', 'rechazado']
 export const ORDER_STATUS_TRANSITIONS = {
@@ -39,9 +40,11 @@ function restoreStorage(key, value) {
 }
 
 function notifyStatusChange(order, previousStatus) {
-  window.dispatchEvent(new CustomEvent(ORDER_STATUS_EVENT, {
-    detail: { orderId: order.id, previousStatus, status: order.status },
-  }))
+  notifyOrderStatusChange({
+    orderId: order.id,
+    previousStatus,
+    status: order.status,
+  })
 }
 
 export function getOrders() {

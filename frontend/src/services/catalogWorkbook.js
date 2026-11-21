@@ -1,17 +1,18 @@
-import { CATEGORIES } from '../data/catalog.js'
-
 const REQUIRED_COLUMNS = ['codigo', 'categoria', 'nombre', 'marca', 'modelo', 'stock', 'precio', 'descripcion']
-const CATEGORY_SLUGS = new Set(CATEGORIES.map((category) => category.slug))
 
 function normalizeHeader(value) {
   return String(value ?? '').trim().toLowerCase()
 }
 
-export function parseCatalogRows(rows) {
+export function parseCatalogRows(rows, categories) {
   if (!Array.isArray(rows) || rows.length < 2) {
     throw new Error('El archivo no contiene filas de productos.')
   }
+  if (!Array.isArray(categories) || categories.length === 0) {
+    throw new Error('No hay categorías cargadas para validar el catálogo.')
+  }
 
+  const categorySlugs = new Set(categories.map((category) => category.slug))
   const headers = rows[0].map(normalizeHeader)
   const missingColumns = REQUIRED_COLUMNS.filter((column) => !headers.includes(column))
   if (missingColumns.length > 0) {
@@ -35,7 +36,7 @@ export function parseCatalogRows(rows) {
         image: String(value('image') ?? '').trim(),
       }
 
-      if (!product.codigo || !product.nombre || !CATEGORY_SLUGS.has(product.categoria)) {
+      if (!product.codigo || !product.nombre || !categorySlugs.has(product.categoria)) {
         throw new Error(`Fila ${index + 2}: código, nombre o categoría inválidos.`)
       }
       if (!Number.isInteger(product.stock) || product.stock < 0 || !Number.isFinite(product.precio) || product.precio < 0) {
@@ -52,7 +53,7 @@ export function parseCatalogRows(rows) {
   return products
 }
 
-export async function loadCatalogWorkbook() {
+export async function loadCatalogWorkbook(categories) {
   const response = await fetch(`${import.meta.env.BASE_URL}catalogo.xlsx`)
   if (!response.ok) throw new Error(`No se pudo cargar catalogo.xlsx (${response.status}).`)
 
@@ -60,5 +61,5 @@ export async function loadCatalogWorkbook() {
   const workbook = await readXlsxFile(await response.blob())
   const firstSheet = Array.isArray(workbook) ? workbook[0] : workbook
   const rows = Array.isArray(firstSheet) ? firstSheet : firstSheet?.data
-  return parseCatalogRows(rows)
+  return parseCatalogRows(rows, categories)
 }

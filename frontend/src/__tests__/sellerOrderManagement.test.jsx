@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext } from '../context/auth-context.js'
 import { CatalogProvider } from '../context/CatalogContext.jsx'
+import OrderNotification from '../components/common/OrderNotification.jsx'
 import SellerPanelPage from '../modules/seller/SellerPanelPage.jsx'
 import { PRODUCTS } from '../data/catalog.js'
 import { fetchProducts } from '../services/catalogApi.js'
@@ -12,6 +13,12 @@ const orderApiMocks = vi.hoisted(() => ({
 }))
 
 vi.mock('../services/catalogApi.js', () => ({
+  fetchCategories: vi.fn().mockResolvedValue([{
+    slug: 'guitarras-acusticas',
+    nombre: 'Guitarras Acústicas',
+    descripcion: '',
+    image: '',
+  }]),
   fetchProducts: vi.fn(),
 }))
 
@@ -55,6 +62,7 @@ function renderSellerPanel() {
       logout: () => {},
     }}>
       <CatalogProvider>
+        <OrderNotification />
         <SellerPanelPage />
       </CatalogProvider>
     </AuthContext.Provider>,
@@ -80,7 +88,7 @@ describe('seller order management', () => {
     fireEvent.click(await screen.findByRole('button', { name: /SV-STAFF-1/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Actualizar estado' }))
 
-    expect(await screen.findByText(/Pedido SV-STAFF-1: Validado/)).toBeInTheDocument()
+    expect(await screen.findAllByText('Pedido SV-STAFF-1: Validado.')).toHaveLength(2)
     expect(screen.getByText('Vendedor Demo')).toBeInTheDocument()
     expect(orderApiMocks.updateStaffOrderStatus).toHaveBeenCalledWith('SV-STAFF-1', 'validado')
   })
