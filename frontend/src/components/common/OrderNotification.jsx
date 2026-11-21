@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ORDER_STATUS_EVENT } from '../../services/mockOrders.js'
+import { ORDER_STATUS_EVENT } from '../../services/orderNotifications.js'
 
 const STATUS_LABELS = {
   pendiente: 'Pendiente',

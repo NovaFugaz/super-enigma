@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CartContext } from './cart-context.js'
 import { useCatalog } from '../hooks/useCatalog.js'
 import { createPaidOrder } from '../services/orderApi.js'
+import { notifyOrderStatusChange } from '../services/orderNotifications.js'
 import { calcTotals } from '../utils/cart.js'
 
 const CART_STORAGE_KEY = 'sonido-vivo-cart'
@@ -105,6 +106,12 @@ export function CartProvider({ children }) {
         paymentApproved: payment.approved,
       })
 
+      const lastStatusChange = order.statusHistory?.[order.statusHistory.length - 1]
+      notifyOrderStatusChange({
+        orderId: order.id,
+        previousStatus: lastStatusChange?.from,
+        status: order.status,
+      })
       clearCart()
       reloadCatalog()
       return { order }

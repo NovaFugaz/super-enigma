@@ -9,6 +9,7 @@ import {
   ORDER_STATUS_TRANSITIONS,
   updateStaffOrderStatus,
 } from '../../services/orderApi.js'
+import { notifyOrderStatusChange } from '../../services/orderNotifications.js'
 import { formatCLP } from '../../utils/format.js'
 
 const THRESHOLD_KEY = 'sonido-vivo-low-stock-threshold'
@@ -139,6 +140,12 @@ export default function SellerPanelPage() {
     setFeedback('')
     try {
       const updatedOrder = await updateStaffOrderStatus(selectedOrder.id, nextStatus)
+      const lastStatusChange = updatedOrder.statusHistory[updatedOrder.statusHistory.length - 1]
+      notifyOrderStatusChange({
+        orderId: updatedOrder.id,
+        previousStatus: lastStatusChange?.from ?? selectedOrder.status,
+        status: updatedOrder.status,
+      })
       setOrders((currentOrders) => currentOrders.map((order) =>
         order.id === updatedOrder.id ? updatedOrder : order,
       ))
