@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CATEGORIES } from '../data/catalog.js'
-import { fetchProducts } from '../services/catalogApi.js'
+import { fetchCategories, fetchProducts } from '../services/catalogApi.js'
 import {
   createStaffProduct,
   deactivateStaffProduct,
@@ -12,16 +11,18 @@ import { CatalogContext } from './catalog-context.js'
 
 export function CatalogProvider({ children }) {
   const [allProducts, setAllProducts] = useState([])
+  const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let mounted = true
-    fetchProducts()
-      .then((loadedProducts) => {
+    Promise.all([fetchProducts(), fetchCategories()])
+      .then(([loadedProducts, loadedCategories]) => {
         if (!mounted) return
         setAllProducts(loadedProducts)
+        setCategories(loadedCategories)
       })
       .catch((loadError) => {
         if (mounted) setError(loadError.message)
@@ -65,7 +66,7 @@ export function CatalogProvider({ children }) {
     if (!codigo || allProducts.some((entry) => entry.codigo === codigo)) {
       return { error: 'Ingresa un código único para el producto.' }
     }
-    if (!CATEGORIES.some((category) => category.slug === product.categoria)) {
+    if (!categories.some((category) => category.slug === product.categoria)) {
       return { error: 'Selecciona una categoría válida.' }
     }
     const name = String(product.nombre ?? '').trim()
@@ -100,7 +101,7 @@ export function CatalogProvider({ children }) {
     const currentProduct = allProducts.find((product) => product.codigo === productCode)
     if (!currentProduct) return { error: 'No se encontró el producto.' }
     const updatedProduct = { ...currentProduct, ...changes, codigo: productCode }
-    if (!CATEGORIES.some((category) => category.slug === updatedProduct.categoria)) {
+    if (!categories.some((category) => category.slug === updatedProduct.categoria)) {
       return { error: 'Selecciona una categoría válida.' }
     }
     if (!String(updatedProduct.nombre ?? '').trim() || !Number.isFinite(Number(updatedProduct.precio)) || Number(updatedProduct.precio) < 0 || !Number.isInteger(Number(updatedProduct.stock)) || Number(updatedProduct.stock) < 0) {
@@ -148,7 +149,7 @@ export function CatalogProvider({ children }) {
 
   return (
     <CatalogContext.Provider value={{
-      categories: CATEGORIES,
+      categories,
       products,
       adminProducts: allProducts,
       loading,

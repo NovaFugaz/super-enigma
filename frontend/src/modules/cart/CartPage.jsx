@@ -1,18 +1,16 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import CartItem from '../../components/cart/CartItem.jsx'
 import { useCart } from '../../hooks/useCart.js'
-import { LOCATIONS } from '../../services/locations.js'
+import { useLocations } from '../../hooks/useLocations.js'
 import { useAuth } from '../../hooks/useAuth.js'
 import { formatCLP } from '../../utils/format.js'
 import { calcTotals } from '../../utils/cart.js'
 import { simulatePayment } from '../../services/mockOrders.js'
 
-const PICKUP_POINTS = LOCATIONS.filter((loc) => loc.type === 'pickup')
-
 export default function CartPage() {
   const [shipping, setShipping] = useState('domicilio')
-  const [pickupId, setPickupId] = useState(PICKUP_POINTS[0]?.id ?? '')
+  const [selectedPickupId, setSelectedPickupId] = useState('')
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [checkoutError, setCheckoutError] = useState('')
   const [order, setOrder] = useState(null)
@@ -20,6 +18,15 @@ export default function CartPage() {
   const [submitting, setSubmitting] = useState(false)
   const { cartItems, clearCart, createOrder } = useCart()
   const { user } = useAuth()
+  const { locations, loading: locationsLoading, error: locationsError, reload: reloadLocations } = useLocations()
+  const pickupPoints = useMemo(
+    () => locations.filter((location) => location.type === 'pickup'),
+    [locations],
+  )
+  const pickupId = pickupPoints.some((point) => point.id === selectedPickupId)
+    ? selectedPickupId
+    : pickupPoints[0]?.id ?? ''
+
   const isEmpty = cartItems.length === 0
   const totals = calcTotals(
     cartItems.map(({ product, quantity }) => ({ product, qty: quantity })),
@@ -38,13 +45,18 @@ export default function CartPage() {
       return
     }
 
+    const pickup = pickupPoints.find((point) => point.id === pickupId)
+    if (shipping === 'retiro' && !pickup) {
+      setCheckoutError('Selecciona un punto de retiro disponible.')
+      return
+    }
+
     const payment = simulatePayment(approved)
     if (!payment.approved) {
       setPaymentMessage(payment.message)
       return
     }
 
-    const pickup = PICKUP_POINTS.find((point) => point.id === pickupId)
     setSubmitting(true)
     try {
       const result = await createOrder({
@@ -186,16 +198,25 @@ export default function CartPage() {
             {shipping === 'retiro' && (
               <div className="pickup-section">
                 <p className="pickup-title">Elige tu punto de retiro</p>
-
+                {locationsLoading && <p role="status">Cargando puntos de retiro…</p>}
+                {locationsError && (
+                  <div role="alert" className="form-error">
+                    No pudimos cargar los puntos de retiro: {locationsError}
+                    <button type="button" className="btn-outline ml-3" onClick={reloadLocations}>Reintentar</button>
+                  </div>
+                )}
+                {!locationsLoading && !locationsError && pickupPoints.length === 0 && (
+                  <p role="alert" className="form-error">No hay puntos de retiro disponibles.</p>
+                )}
                 <div className="pickup-list">
-                  {PICKUP_POINTS.map((point) => (
+                  {pickupPoints.map((point) => (
                     <label key={point.id} className="shipping-option">
                       <input
                         type="radio"
                         name="pickup"
                         value={point.id}
                         checked={pickupId === point.id}
-                        onChange={(e) => setPickupId(e.target.value)} />
+                        onChange={(e) => setSelectedPickupId(e.target.value)} />
                       <span>
                         <span className="shipping-option-title">{point.name}</span>
                         <span className="shipping-option-text">{point.address}</span>
@@ -255,10 +276,10 @@ export default function CartPage() {
           )}
           {cartItems.length > 0 && user?.role === 'customer' && (
             <div className="space-y-2">
-              <button type="button" className="btn-primary btn-block" disabled={submitting} onClick={() => handlePayment(true)}>
+              <button type="button" className="btn-primary btn-block" disabled={submitting || (shipping === 'retiro' && (locationsLoading || Boolean(locationsError) || pickupPoints.length === 0))} onClick={() => handlePayment(true)}>
                 Pagar con tarjeta (simulación)
               </button>
-              <button type="button" className="btn-outline btn-block" disabled={submitting} onClick={() => handlePayment(false)}>
+              <button type="button" className="btn-outline btn-block" disabled={submitting || (shipping === 'retiro' && (locationsLoading || Boolean(locationsError) || pickupPoints.length === 0))} onClick={() => handlePayment(false)}>
                 Simular pago rechazado
               </button>
               {submitting && <p role="status">Procesando pedido…</p>}

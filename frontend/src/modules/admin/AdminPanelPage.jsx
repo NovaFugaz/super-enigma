@@ -14,7 +14,7 @@ const ROLE_LABELS = { customer: 'Cliente', seller: 'Vendedor', admin: 'Administr
 const TAB_LABELS = { dashboard: 'Dashboard', usuarios: 'Usuarios y roles', productos: 'Productos', inventario: 'Inventario' }
 const EMPTY_USER = { name: '', phone: '', email: '', password: '', role: 'customer' }
 const EMPTY_PRODUCT = {
-  codigo: '', categoria: 'guitarras-acusticas', nombre: '', marca: '', modelo: '',
+  codigo: '', categoria: '', nombre: '', marca: '', modelo: '',
   precio: '', stock: 0, descripcion: '', image: '',
 }
 
@@ -71,6 +71,7 @@ export default function AdminPanelPage() {
   const [exportingReport, setExportingReport] = useState(false)
   const [reportExportError, setReportExportError] = useState('')
   const [feedback, setFeedback] = useState('')
+  const resetProductDraft = () => ({ ...EMPTY_PRODUCT, categoria: categories[0]?.slug ?? '' })
 
   useEffect(() => {
     let active = true
@@ -297,7 +298,7 @@ export default function AdminPanelPage() {
         return
       }
       setFeedback(`Producto ${result.product.codigo} ${editingProductCode ? 'actualizado' : 'creado'}.`)
-      setProductDraft(EMPTY_PRODUCT)
+      setProductDraft(resetProductDraft())
       setEditingProductCode('')
     } finally {
       setProductSaving(false)
@@ -524,7 +525,7 @@ export default function AdminPanelPage() {
               <form className="admin-form" onSubmit={saveProduct} noValidate>
                 <label className="seller-control"><span>Código</span><input className="form-input" value={productDraft.codigo} disabled={Boolean(editingProductCode)} onChange={(event) => setProductDraft((current) => ({ ...current, codigo: event.target.value }))} required /></label>
                 <label className="seller-control"><span>Nombre</span><input className="form-input" value={productDraft.nombre} onChange={(event) => setProductDraft((current) => ({ ...current, nombre: event.target.value }))} required /></label>
-                <label className="seller-control"><span>Categoría</span><select className="form-input" aria-label="Categoría del producto" value={productDraft.categoria} onChange={(event) => setProductDraft((current) => ({ ...current, categoria: event.target.value }))}>{categories.map((category) => <option key={category.slug} value={category.slug}>{category.nombre}</option>)}</select></label>
+                <label className="seller-control"><span>Categoría</span><select className="form-input" aria-label="Categoría del producto" value={productDraft.categoria} onChange={(event) => setProductDraft((current) => ({ ...current, categoria: event.target.value }))} required disabled={categories.length === 0}><option value="">Selecciona una categoría</option>{categories.map((category) => <option key={category.slug} value={category.slug}>{category.nombre}</option>)}</select></label>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="seller-control"><span>Marca</span><input className="form-input" value={productDraft.marca} onChange={(event) => setProductDraft((current) => ({ ...current, marca: event.target.value }))} /></label>
                   <label className="seller-control"><span>Modelo</span><input className="form-input" value={productDraft.modelo} onChange={(event) => setProductDraft((current) => ({ ...current, modelo: event.target.value }))} /></label>
@@ -533,7 +534,7 @@ export default function AdminPanelPage() {
                 {!editingProductCode && <label className="seller-control"><span>Stock inicial</span><input className="form-input" type="number" min="0" step="1" value={productDraft.stock} onChange={(event) => setProductDraft((current) => ({ ...current, stock: event.target.value }))} required /></label>}
                 <label className="seller-control"><span>Descripción</span><textarea className="form-input" rows="3" value={productDraft.descripcion} onChange={(event) => setProductDraft((current) => ({ ...current, descripcion: event.target.value }))} /></label>
                 {productError && <p className="form-error" role="alert">{productError}</p>}
-                <div className="flex flex-wrap gap-2"><button type="submit" className="btn-primary" disabled={!staffProductsLoaded || productSaving}>{productSaving ? 'Guardando…' : editingProductCode ? 'Guardar producto' : 'Crear producto'}</button>{editingProductCode && <button type="button" className="btn-outline" onClick={() => { setEditingProductCode(''); setProductDraft(EMPTY_PRODUCT); setProductError('') }}>Cancelar</button>}</div>
+                <div className="flex flex-wrap gap-2"><button type="submit" className="btn-primary" disabled={!staffProductsLoaded || categories.length === 0 || productSaving}>{productSaving ? 'Guardando…' : editingProductCode ? 'Guardar producto' : 'Crear producto'}</button>{editingProductCode && <button type="button" className="btn-outline" onClick={() => { setEditingProductCode(''); setProductDraft(resetProductDraft()); setProductError('') }}>Cancelar</button>}</div>
               </form>
             </section>
             <section className="admin-panel admin-product-list-panel">
