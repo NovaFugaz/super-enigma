@@ -5,7 +5,13 @@ import { useAuth } from '../hooks/useAuth.js'
 import { apiRequest, ApiError } from '../services/api.js'
 import { loginAccount, registerAccount } from '../services/authApi.js'
 import { fetchProducts, toCatalogProduct } from '../services/catalogApi.js'
-import { createPaidOrder, fetchMyOrders, trackOrder } from '../services/orderApi.js'
+import {
+  createPaidOrder,
+  fetchMyOrders,
+  fetchStaffOrders,
+  trackOrder,
+  updateStaffOrderStatus,
+} from '../services/orderApi.js'
 import { confirmPasswordReset, requestPasswordReset } from '../services/passwordResetApi.js'
 
 describe('backend API integration services', () => {
@@ -274,5 +280,42 @@ describe('backend API integration services', () => {
       total: 134980,
     })
     expect(fetch.mock.calls[1][0]).toBe('http://localhost:8080/api/orders/tracking/SV-123')
+  })
+
+  it('loads staff orders and patches a status using the backend enum', async () => {
+    const makeOrder = (status) => ({
+      id: 'SV-STAFF-1',
+      trackingNumber: 'TRK-STAFF-1',
+      status,
+      createdAt: '2026-10-13T00:00:00.000Z',
+      customerId: 8,
+      customerName: 'Cliente Demo',
+      customerEmail: 'cliente@example.cl',
+      shipping: { method: 'DOMICILIO', address: 'Calle 123', pickup: null },
+      items: [],
+      subtotal: 0,
+      tax: 0,
+      shippingCost: 0,
+      total: 0,
+      payment: { status: 'aprobado', transactionId: 'PAY-123', authorizationCode: 'AUTH-123' },
+      receipt: { number: 'BOL-SV-STAFF-1', issuedAt: '2026-10-13T00:00:00.000Z' },
+      statusHistory: [{ from: 'EN_PROCESO', status, actorName: 'Vendedor', createdAt: '2026-10-13T00:00:00.000Z' }],
+    })
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([makeOrder('EN_PROCESO')]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(makeOrder('VALIDADO')), { status: 200 })))
+
+    await expect(fetchStaffOrders()).resolves.toMatchObject([{ id: 'SV-STAFF-1', status: 'en_proceso' }])
+    await expect(updateStaffOrderStatus('SV-STAFF-1', 'validado')).resolves.toMatchObject({
+      id: 'SV-STAFF-1',
+      status: 'validado',
+    })
+
+    expect(fetch.mock.calls[0][0]).toBe('http://localhost:8080/api/staff/orders')
+    expect(fetch.mock.calls[1][0]).toBe('http://localhost:8080/api/staff/orders/SV-STAFF-1/status')
+    expect(fetch.mock.calls[1][1]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'VALIDADO' }),
+    })
   })
 })
