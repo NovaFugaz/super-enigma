@@ -1,16 +1,3 @@
-export const CATEGORIES = [
-  { slug: 'guitarras-acusticas', nombre: 'Guitarras Acústicas', descripcion: 'Folk, Dreadnought, Clásica, Electroacústica, Niños', image: '' }, 
-  { slug: 'guitarras-electricas', nombre: 'Guitarras Eléctricas', descripcion: 'Stratocaster, Telecaster, Les Paul, SG, Semi-hollow, Signature', image: '' },
-  { slug: 'bajos-electricos', nombre: 'Bajos Eléctricos', descripcion: 'Precision, Jazz, Activo, Acústico, Fretless', image: '' }, 
-  { slug: 'baterias', nombre: 'Baterías', descripcion: 'Acústica, Electrónica, Cajas, Platillos, Stands', image: '' },
-  { slug: 'teclados-pianos', nombre: 'Teclados y Pianos', descripcion: 'Digital, Sintetizador, MIDI Controller, Órgano', image: '' }, 
-  { slug: 'amplificadores', nombre: 'Amplificadores', descripcion: 'Guitarra combo, Guitarra cabezal, Bajo, Acústico, Teclado', image: '' }, 
-  { slug: 'microfonos', nombre: 'Micrófonos', descripcion: 'Dinámico, Condensador, USB, Ribbon, Lavalier', image: '' }, 
-  { slug: 'pedales-de-efectos', nombre: 'Pedales de Efectos', descripcion: 'Distorsión, Overdrive, Fuzz, Reverb, Delay, Chorus, Multi-FX', image: '' }, 
-  { slug: 'accesorios', nombre: 'Accesorios', descripcion: 'Cuerdas, Púas, Soportes, Cables, Correas, Afinadores', image: '' }, 
-  { slug: 'estudio-grabacion', nombre: 'Estudio y Grabación', descripcion: 'Interfaces, Auriculares, Monitores, Pop filters, DAW', image: '' }, 
-]
-
 export const PRODUCTS = [
   // Guitarras Acústicas
   { codigo: 'GA001', categoria: 'guitarras-acusticas', nombre: 'Guitarra Acústica Folk', marca: 'Yamaha', modelo: 'F310', stock: 8, precio: 129990, descripcion: 'Tapa de abeto, aros y fondo de meranti. Ideal para iniciantes.', image: '' },
@@ -76,7 +63,6 @@ export const PRODUCTS = [
 ]
 
 export const getProductByCode = (codigo) => PRODUCTS.find((p) => p.codigo === codigo)
-export const getCategoryBySlug = (slug) => CATEGORIES.find((c) => c.slug === slug)
 
 export const FEATURED_CODES = ['GA002', 'GE001', 'TC002', 'AM002', 'MI001', 'PE006']
 export const getFeaturedProducts = () => FEATURED_CODES.map(getProductByCode).filter(Boolean)

@@ -1,45 +1,40 @@
-export const LOCATIONS = [
-  {
-    id: 'tienda',
-    type: 'store',
-    name: 'Sonido Vivo - Tienda',
-    address: 'Av. Valparaíso 581, Loc 17, Viña del Mar, Valparaíso',
-    position: [-33.0241, -71.5543],
-    hours: [
-      'Lunes a Viernes: 10:30 - 19:30 hrs',
-      'Sábados y Domingos: Cerrado',
-    ],
-    note: 'Ubicación de la tienda física.',
-  },
-  {
-    id: 'retiro-centro',
-    type: 'pickup',
-    name: 'Starken Viña Batuco',
-    address: 'Av. Valparaíso 1195, Viña del Mar, Valparaíso',
-    position: [-33.0259, -71.5449],
-    hours: [
-      'Lunes a Viernes: 09:00 - 18:30 hrs',
-      'Sábados: 09:00 - 13:00',
-      'Domingo y festivos: Cerrado',
-    ],
-    note: 'Retiro de pedidos Starken',
-  },
-  {
-    id: 'retiro-chile',
-    type: 'pickup',
-    name: 'Chilexpress Centro de Servicios',
-    address: 'San Antonio 1218, Viña del Mar, Valparaíso',
-    position: [-33.0110, -71.5426],
-    hours: [
-      'Lunes a Viernes: 09:00 - 18:00 hrs',
-      'Sábados: 10:00 - 13:00',
-      'Domingo y festivos: Cerrado',
-    ],
-    note: 'Retiro de pedidos Chilexpress',
-  },
-]
+import { apiRequest } from './api.js'
 
-export const STORE = LOCATIONS[0]
+export function toLocation(location) {
+  if (
+    !location ||
+    typeof location.id !== 'string' ||
+    !['store', 'pickup'].includes(location.type) ||
+    typeof location.name !== 'string' ||
+    typeof location.address !== 'string' ||
+    !Array.isArray(location.position) ||
+    location.position.length !== 2 ||
+    !location.position.every((coordinate) => Number.isFinite(coordinate)) ||
+    !Array.isArray(location.hours) ||
+    !location.hours.every((hour) => typeof hour === 'string') ||
+    (location.note != null && typeof location.note !== 'string')
+  ) {
+    throw new Error('La API devolvió una ubicación con datos inválidos.')
+  }
+
+  return {
+    id: location.id,
+    type: location.type,
+    name: location.name,
+    address: location.address,
+    position: location.position,
+    hours: location.hours,
+    note: location.note ?? '',
+  }
+}
+
+export async function fetchLocations() {
+  const response = await apiRequest('/api/locations')
+  if (!Array.isArray(response)) {
+    throw new Error('La API devolvió una lista de ubicaciones inválida.')
+  }
+  return response.map(toLocation)
+}
 
 export const googleDirectionsUrl = ([lat, lng]) =>
   `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`
