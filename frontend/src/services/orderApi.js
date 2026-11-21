@@ -11,6 +11,15 @@ const BACKEND_ORDER_STATUSES = {
 
 export const ORDER_STATUSES = Object.values(BACKEND_ORDER_STATUSES)
 
+export const ORDER_STATUS_TRANSITIONS = {
+  pendiente: ['en_proceso', 'rechazado'],
+  en_proceso: ['validado', 'rechazado'],
+  validado: ['enviado', 'rechazado'],
+  enviado: ['entregado'],
+  entregado: [],
+  rechazado: [],
+}
+
 function mapStatus(status) {
   const mappedStatus = BACKEND_ORDER_STATUSES[status]
   if (!mappedStatus) throw new Error('La API devolvió un estado de pedido desconocido.')
@@ -132,6 +141,24 @@ export async function fetchMyOrders() {
   const response = await apiRequest('/api/orders/mine')
   if (!Array.isArray(response)) throw new Error('La API devolvió un historial de pedidos inválido.')
   return response.map(toOrderSummary)
+}
+
+export async function fetchStaffOrders() {
+  const response = await apiRequest('/api/staff/orders')
+  if (!Array.isArray(response)) throw new Error('La API devolvió una lista de pedidos inválida.')
+  return response.map(toOrder)
+}
+
+export async function updateStaffOrderStatus(orderId, status) {
+  const backendStatus = Object.entries(BACKEND_ORDER_STATUSES)
+    .find(([, frontendStatus]) => frontendStatus === status)?.[0]
+  if (!backendStatus) throw new Error('El estado seleccionado no es válido.')
+
+  const response = await apiRequest(`/api/staff/orders/${encodeURIComponent(orderId)}/status`, {
+    method: 'PATCH',
+    body: { status: backendStatus },
+  })
+  return toOrder(response)
 }
 
 export async function trackOrder(reference) {

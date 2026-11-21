@@ -4,11 +4,11 @@ import StockBadge from '../../components/catalog/StockBadge.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
 import { useCatalog } from '../../hooks/useCatalog.js'
 import {
-  getOrders,
+  fetchStaffOrders,
   ORDER_STATUSES,
   ORDER_STATUS_TRANSITIONS,
-  updateOrderStatus,
-} from '../../services/mockOrders.js'
+  updateStaffOrderStatus,
+} from '../../services/orderApi.js'
 import { formatCLP } from '../../utils/format.js'
 
 const THRESHOLD_KEY = 'sonido-vivo-low-stock-threshold'
@@ -43,23 +43,33 @@ export default function SellerPanelPage() {
   const [stockFilter, setStockFilter] = useState('todos')
   const [threshold, setThreshold] = useState(readThreshold)
   const [stockDrafts, setStockDrafts] = useState({})
-  const [orders, setOrders] = useState(getOrders)
+  const [orders, setOrders] = useState([])
   const [orderFilter, setOrderFilter] = useState('todos')
   const [orderQuery, setOrderQuery] = useState('')
   const [selectedOrderId, setSelectedOrderId] = useState('')
   const [nextStatus, setNextStatus] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [ordersLoading, setOrdersLoading] = useState(true)
+  const [ordersError, setOrdersError] = useState('')
+  const [ordersReloadKey, setOrdersReloadKey] = useState(0)
+  const [savingOrderStatus, setSavingOrderStatus] = useState(false)
 
   useEffect(() => {
-    const refreshOrders = () => setOrders(getOrders())
-    refreshOrders()
-    window.addEventListener('sonido-vivo:order-status-changed', refreshOrders)
-    window.addEventListener('storage', refreshOrders)
+    let active = true
+    fetchStaffOrders()
+      .then((loadedOrders) => {
+        if (active) setOrders(loadedOrders)
+      })
+      .catch((error) => {
+        if (active) setOrdersError(error.message)
+      })
+      .finally(() => {
+        if (active) setOrdersLoading(false)
+      })
     return () => {
-      window.removeEventListener('sonido-vivo:order-status-changed', refreshOrders)
-      window.removeEventListener('storage', refreshOrders)
+      active = false
     }
-  }, [])
+  }, [ordersReloadKey])
 
   const lowStockProducts = useMemo(
     () => products.filter((product) => product.stock <= threshold),
@@ -123,16 +133,22 @@ export default function SellerPanelPage() {
     setFeedback('')
   }
 
-  const saveOrderStatus = () => {
-    if (!selectedOrder || !nextStatus) return
-    const result = updateOrderStatus(selectedOrder.id, nextStatus, user)
-    if (result.error) {
-      setFeedback(result.error)
-      return
+  const saveOrderStatus = async () => {
+    if (!selectedOrder || !nextStatus || savingOrderStatus) return
+    setSavingOrderStatus(true)
+    setFeedback('')
+    try {
+      const updatedOrder = await updateStaffOrderStatus(selectedOrder.id, nextStatus)
+      setOrders((currentOrders) => currentOrders.map((order) =>
+        order.id === updatedOrder.id ? updatedOrder : order,
+      ))
+      setFeedback(`Pedido ${updatedOrder.id}: ${STATUS_LABELS[updatedOrder.status]}.`)
+      setNextStatus(ORDER_STATUS_TRANSITIONS[updatedOrder.status]?.[0] ?? '')
+    } catch (error) {
+      setFeedback(error.message)
+    } finally {
+      setSavingOrderStatus(false)
     }
-    setOrders(getOrders())
-    setFeedback(result.changed ? `Pedido ${selectedOrder.id}: ${STATUS_LABELS[nextStatus]}.` : 'El pedido ya tiene ese estado.')
-    setNextStatus(ORDER_STATUS_TRANSITIONS[nextStatus]?.[0] ?? '')
   }
 
   return (
@@ -250,7 +266,20 @@ export default function SellerPanelPage() {
               </label>
             </div>
             <div className="seller-order-items">
-              {filteredOrders.length === 0 ? (
+              {ordersLoading ? (
+                <p className="p-4 text-sm text-costa-deep" role="status">Cargando pedidos…</p>
+              ) : ordersError ? (
+                <div className="p-4" role="alert">
+                  <p>{ordersError}</p>
+                  <button type="button" className="auth-inline-link mt-2" onClick={() => {
+                    setOrdersError('')
+                    setOrdersLoading(true)
+                    setOrdersReloadKey((key) => key + 1)
+                  }}>
+                    Reintentar
+                  </button>
+                </div>
+              ) : filteredOrders.length === 0 ? (
                 <EmptyState title="Sin pedidos" description="No hay coincidencias para estos filtros." />
               ) : filteredOrders.map((order) => (
                 <button
@@ -296,19 +325,23 @@ export default function SellerPanelPage() {
                         {ORDER_STATUS_TRANSITIONS[selectedOrder.status].map((status) => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
                       </select>
                     </label>
-                    <button type="button" className="btn-primary" disabled={!nextStatus} onClick={saveOrderStatus}>Actualizar estado</button>
+                    <button type="button" className="btn-primary" disabled={!nextStatus || savingOrderStatus} onClick={saveOrderStatus}>
+                      {savingOrderStatus ? 'Guardando…' : 'Actualizar estado'}
+                    </button>
                   </div>
                 ) : <p className="mt-4 text-sm text-costa-sage">Este pedido está en un estado final.</p>}
 
                 <h3 className="seller-section-heading">Registro de acciones</h3>
-                {(selectedOrder.auditLog ?? []).length === 0 ? (
+                {(selectedOrder.statusHistory ?? []).length === 0 ? (
                   <p className="text-sm text-costa-sage">Sin acciones registradas todavía.</p>
                 ) : (
                   <ol className="seller-audit-list">
-                    {selectedOrder.auditLog.map((entry, index) => (
+                    {selectedOrder.statusHistory.map((entry, index) => (
                       <li key={`${entry.createdAt}-${index}`}>
-                        <strong>{entry.actorName ?? entry.actorRole ?? 'Sistema'}</strong>
-                        <span>{entry.action === 'cambio_estado' ? `${STATUS_LABELS[entry.from]} → ${STATUS_LABELS[entry.to]}` : entry.action}</span>
+                        <strong>{entry.actorName ?? 'Sistema'}</strong>
+                        <span>{entry.from
+                          ? `${STATUS_LABELS[entry.from]} → ${STATUS_LABELS[entry.status]}`
+                          : STATUS_LABELS[entry.status]}</span>
                         <time dateTime={entry.createdAt}>{dateTime(entry.createdAt)}</time>
                       </li>
                     ))}
