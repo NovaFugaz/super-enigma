@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext } from '../context/auth-context.js'
 import { CartProvider } from '../context/CartContext.jsx'
 import { CatalogProvider } from '../context/CatalogContext.jsx'
+import OrderNotification from '../components/common/OrderNotification.jsx'
 import CartPage from '../modules/cart/CartPage.jsx'
 import { PRODUCTS } from '../data/catalog.js'
 import { fetchProducts } from '../services/catalogApi.js'
@@ -78,6 +79,7 @@ function renderCartPage(user, items = [{ productCode: 'GA001', quantity: 2 }]) {
       <AuthContext.Provider value={{ user, login: () => {}, logout: () => {} }}>
         <CatalogProvider>
           <CartProvider>
+            <OrderNotification />
             <CartPage />
           </CartProvider>
         </CatalogProvider>
@@ -114,6 +116,7 @@ describe('cart checkout flows', () => {
     fireEvent.click(screen.getByRole('button', { name: /pagar con tarjeta/i }))
 
     expect(await screen.findByText(/Pedido confirmado/i)).toBeInTheDocument()
+    expect(await screen.findByText('Pedido SV-123: En proceso.')).toBeInTheDocument()
     expect(orderApiMocks.createPaidOrder).toHaveBeenCalledWith({
       shipping: {
         method: 'DOMICILIO',
