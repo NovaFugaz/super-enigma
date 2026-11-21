@@ -34,6 +34,8 @@ export default function AdminPanelPage() {
   const {
     adminProducts,
     categories,
+    loadStaffProducts,
+    loading: catalogLoading,
     createProduct,
     deactivateProduct,
     updateProduct,
@@ -51,6 +53,10 @@ export default function AdminPanelPage() {
   const [editingProductCode, setEditingProductCode] = useState('')
   const [productQuery, setProductQuery] = useState('')
   const [productError, setProductError] = useState('')
+  const [staffProductsError, setStaffProductsError] = useState('')
+  const [staffProductsLoaded, setStaffProductsLoaded] = useState(false)
+  const [staffProductsReloadKey, setStaffProductsReloadKey] = useState(0)
+  const [productSaving, setProductSaving] = useState(false)
   const [inventoryQuery, setInventoryQuery] = useState('')
   const [stockDrafts, setStockDrafts] = useState({})
   const [threshold, setThreshold] = useState(readThreshold)
@@ -68,6 +74,24 @@ export default function AdminPanelPage() {
       window.removeEventListener('storage', refreshOrders)
     }
   }, [])
+
+  useEffect(() => {
+    if (catalogLoading) return undefined
+    let active = true
+    loadStaffProducts()
+      .then(() => {
+        if (active) {
+          setStaffProductsLoaded(true)
+          setStaffProductsError('')
+        }
+      })
+      .catch((error) => {
+        if (active) setStaffProductsError(error.message)
+      })
+    return () => {
+      active = false
+    }
+  }, [catalogLoading, loadStaffProducts, staffProductsReloadKey])
 
   const filteredUsers = useMemo(() => {
     const query = userQuery.trim().toLowerCase()
@@ -203,19 +227,24 @@ export default function AdminPanelPage() {
     setFeedback(`Usuario ${account.email}: ${account.active ? 'desactivado' : 'activado'}.`)
   }
 
-  const saveProduct = (event) => {
+  const saveProduct = async (event) => {
     event.preventDefault()
     setProductError('')
-    const result = editingProductCode
-      ? updateProduct(editingProductCode, productDraft)
-      : createProduct(productDraft)
-    if (result.error) {
-      setProductError(result.error)
-      return
+    setProductSaving(true)
+    try {
+      const result = editingProductCode
+        ? await updateProduct(editingProductCode, productDraft)
+        : await createProduct(productDraft)
+      if (result.error) {
+        setProductError(result.error)
+        return
+      }
+      setFeedback(`Producto ${result.product.codigo} ${editingProductCode ? 'actualizado' : 'creado'}.`)
+      setProductDraft(EMPTY_PRODUCT)
+      setEditingProductCode('')
+    } finally {
+      setProductSaving(false)
     }
-    setFeedback(`Producto ${result.product.codigo} ${editingProductCode ? 'actualizado' : 'creado'}.`)
-    setProductDraft(EMPTY_PRODUCT)
-    setEditingProductCode('')
   }
 
   const editProduct = (product) => {
@@ -225,8 +254,8 @@ export default function AdminPanelPage() {
     setActiveTab('productos')
   }
 
-  const handleDeactivateProduct = (product) => {
-    const result = deactivateProduct(product.codigo)
+  const handleDeactivateProduct = async (product) => {
+    const result = await deactivateProduct(product.codigo)
     if (result.error) {
       setProductError(result.error)
       return
@@ -234,9 +263,9 @@ export default function AdminPanelPage() {
     setFeedback(`Producto ${product.codigo} desactivado del catálogo.`)
   }
 
-  const saveStock = (product) => {
+  const saveStock = async (product) => {
     const stock = Number(stockDrafts[product.codigo] ?? product.stock)
-    const result = updateStock(product.codigo, stock)
+    const result = await updateStock(product.codigo, stock)
     if (result.error) {
       setFeedback(result.error)
       return
@@ -278,6 +307,20 @@ export default function AdminPanelPage() {
         ))}
       </div>
       {feedback && <p className="mt-4 text-sm text-costa-deep" role="status" aria-live="polite">{feedback}</p>}
+      {!staffProductsLoaded && !staffProductsError && (
+        <p className="mt-4 text-sm text-costa-deep" role="status">Cargando catálogo de administración…</p>
+      )}
+      {staffProductsError && (
+        <div className="mt-4 text-sm text-red-700" role="alert">
+          <p>No se pudo cargar el catálogo de administración: {staffProductsError}</p>
+          <button type="button" className="auth-inline-link mt-2" onClick={() => {
+            setStaffProductsError('')
+            setStaffProductsReloadKey((key) => key + 1)
+          }}>
+            Reintentar
+          </button>
+        </div>
+      )}
 
       {activeTab === 'dashboard' && (
         <section className="admin-section" role="tabpanel" aria-label="Dashboard">
@@ -396,7 +439,7 @@ export default function AdminPanelPage() {
                 {!editingProductCode && <label className="seller-control"><span>Stock inicial</span><input className="form-input" type="number" min="0" step="1" value={productDraft.stock} onChange={(event) => setProductDraft((current) => ({ ...current, stock: event.target.value }))} required /></label>}
                 <label className="seller-control"><span>Descripción</span><textarea className="form-input" rows="3" value={productDraft.descripcion} onChange={(event) => setProductDraft((current) => ({ ...current, descripcion: event.target.value }))} /></label>
                 {productError && <p className="form-error" role="alert">{productError}</p>}
-                <div className="flex flex-wrap gap-2"><button type="submit" className="btn-primary">{editingProductCode ? 'Guardar producto' : 'Crear producto'}</button>{editingProductCode && <button type="button" className="btn-outline" onClick={() => { setEditingProductCode(''); setProductDraft(EMPTY_PRODUCT); setProductError('') }}>Cancelar</button>}</div>
+                <div className="flex flex-wrap gap-2"><button type="submit" className="btn-primary" disabled={!staffProductsLoaded || productSaving}>{productSaving ? 'Guardando…' : editingProductCode ? 'Guardar producto' : 'Crear producto'}</button>{editingProductCode && <button type="button" className="btn-outline" onClick={() => { setEditingProductCode(''); setProductDraft(EMPTY_PRODUCT); setProductError('') }}>Cancelar</button>}</div>
               </form>
             </section>
             <section className="admin-panel admin-product-list-panel">
@@ -410,7 +453,7 @@ export default function AdminPanelPage() {
                       <td><strong>{product.nombre}</strong><span className="seller-subline">{product.codigo} · {product.marca}</span></td>
                       <td>{product.stock}</td>
                       <td><span className={`order-status ${product.active === false ? 'order-status-rechazado' : 'order-status-validado'}`}>{product.active === false ? 'Inactivo' : 'Activo'}</span></td>
-                      <td><div className="admin-row-actions"><button type="button" className="auth-inline-link" onClick={() => editProduct(product)}>Editar</button>{product.active !== false && <button type="button" className="auth-inline-link" onClick={() => handleDeactivateProduct(product)}>Desactivar</button>}</div></td>
+                      <td><div className="admin-row-actions"><button type="button" className="auth-inline-link" disabled={!staffProductsLoaded} onClick={() => editProduct(product)}>Editar</button>{product.active !== false && <button type="button" className="auth-inline-link" disabled={!staffProductsLoaded} onClick={() => handleDeactivateProduct(product)}>Desactivar</button>}</div></td>
                     </tr>
                   ))}</tbody>
                 </table>

@@ -112,9 +112,9 @@ export default function SellerPanelPage() {
     }
   }
 
-  const saveStock = (product) => {
+  const saveStock = async (product) => {
     const value = Number(stockDrafts[product.codigo] ?? product.stock)
-    const result = updateStock(product.codigo, value)
+    const result = await updateStock(product.codigo, value)
     if (result.error) {
       setFeedback(result.error)
       return

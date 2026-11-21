@@ -1,34 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { CATEGORIES } from '../data/catalog.js'
 import { fetchProducts } from '../services/catalogApi.js'
+import {
+  createStaffProduct,
+  deactivateStaffProduct,
+  fetchStaffProducts,
+  updateProductStock as updateProductStockRequest,
+  updateStaffProduct,
+} from '../services/productApi.js'
 import { CatalogContext } from './catalog-context.js'
 
-const STOCK_KEY = 'sonido-vivo-stock'
-const PRODUCT_OVERRIDES_KEY = 'sonido-vivo-product-overrides'
-
-function applyStockOverrides(products, overrides) {
-  return products.map((product) => ({
-    ...product,
-    stock: Number.isInteger(overrides[product.codigo])
-      ? overrides[product.codigo]
-      : product.stock,
-  }))
-}
-
-function mergeProductOverrides(baseProducts, overrides) {
-  const baseCodes = new Set(baseProducts.map((product) => product.codigo))
-  const mergedProducts = baseProducts.map((product) => ({
-    ...product,
-    ...(overrides[product.codigo] ?? {}),
-  }))
-  const newProducts = Object.values(overrides).filter((product) => product?.codigo && !baseCodes.has(product.codigo))
-  return [...mergedProducts, ...newProducts]
-}
-
 export function CatalogProvider({ children }) {
-  const [stockOverrides, setStockOverrides] = useState({})
-  const [productOverrides, setProductOverrides] = useState({})
-  const [baseProducts, setBaseProducts] = useState([])
   const [allProducts, setAllProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -39,7 +21,6 @@ export function CatalogProvider({ children }) {
     fetchProducts()
       .then((loadedProducts) => {
         if (!mounted) return
-        setBaseProducts(loadedProducts)
         setAllProducts(loadedProducts)
       })
       .catch((loadError) => {
@@ -54,12 +35,13 @@ export function CatalogProvider({ children }) {
     }
   }, [reloadKey])
 
-  const applyNewStock = (overrides) => {
-    setStockOverrides(overrides)
-    setAllProducts((currentProducts) => applyStockOverrides(currentProducts, overrides))
-  }
+  const loadStaffProducts = useCallback(async () => {
+    const loadedProducts = await fetchStaffProducts()
+    setAllProducts(loadedProducts)
+    return loadedProducts
+  }, [])
 
-  const updateStock = (productCode, quantity) => {
+  const updateStock = async (productCode, quantity) => {
     if (!allProducts.some((product) => product.codigo === productCode)) {
       return { error: 'No se encontró el producto.' }
     }
@@ -67,31 +49,18 @@ export function CatalogProvider({ children }) {
       return { error: 'El stock debe ser un entero mayor o igual a cero.' }
     }
 
-    const nextOverrides = { ...stockOverrides, [productCode]: quantity }
     try {
-      window.localStorage.setItem(STOCK_KEY, JSON.stringify(nextOverrides))
-    } catch {
-      return { error: 'No se pudo guardar el stock en este navegador.' }
+      const updatedProduct = await updateProductStockRequest(productCode, quantity)
+      setAllProducts((currentProducts) => currentProducts.map((product) =>
+        product.codigo === productCode ? updatedProduct : product,
+      ))
+      return { stock: updatedProduct.stock }
+    } catch (error) {
+      return { error: error.message }
     }
-
-    applyNewStock(nextOverrides)
-    return { stock: quantity }
   }
 
-  const persistProductOverrides = (nextOverrides) => {
-    try {
-      window.localStorage.setItem(PRODUCT_OVERRIDES_KEY, JSON.stringify(nextOverrides))
-    } catch {
-      return { error: 'No se pudieron guardar los productos en este navegador.' }
-    }
-
-    setProductOverrides(nextOverrides)
-    const mergedProducts = mergeProductOverrides(baseProducts, nextOverrides)
-    setAllProducts(applyStockOverrides(mergedProducts, stockOverrides))
-    return { success: true }
-  }
-
-  const createProduct = (product) => {
+  const createProduct = async (product) => {
     const codigo = String(product.codigo ?? '').trim().toUpperCase()
     if (!codigo || allProducts.some((entry) => entry.codigo === codigo)) {
       return { error: 'Ingresa un código único para el producto.' }
@@ -118,11 +87,16 @@ export function CatalogProvider({ children }) {
       image: String(product.image ?? '').trim(),
       active: true,
     }
-    const result = persistProductOverrides({ ...productOverrides, [codigo]: createdProduct })
-    return result.error ? result : { product: createdProduct }
+    try {
+      const savedProduct = await createStaffProduct(createdProduct)
+      setAllProducts((currentProducts) => [...currentProducts, savedProduct])
+      return { product: savedProduct }
+    } catch (error) {
+      return { error: error.message }
+    }
   }
 
-  const updateProduct = (productCode, changes) => {
+  const updateProduct = async (productCode, changes) => {
     const currentProduct = allProducts.find((product) => product.codigo === productCode)
     if (!currentProduct) return { error: 'No se encontró el producto.' }
     const updatedProduct = { ...currentProduct, ...changes, codigo: productCode }
@@ -139,11 +113,32 @@ export function CatalogProvider({ children }) {
       precio: Number(updatedProduct.precio),
       stock: Number(updatedProduct.stock),
     }
-    const result = persistProductOverrides({ ...productOverrides, [productCode]: normalizedProduct })
-    return result.error ? result : { product: normalizedProduct }
+    try {
+      const savedProduct = await updateStaffProduct(productCode, normalizedProduct)
+      setAllProducts((currentProducts) => currentProducts.map((product) =>
+        product.codigo === productCode ? savedProduct : product,
+      ))
+      return { product: savedProduct }
+    } catch (error) {
+      return { error: error.message }
+    }
   }
 
-  const deactivateProduct = (productCode) => updateProduct(productCode, { active: false })
+  const deactivateProduct = async (productCode) => {
+    const product = allProducts.find((entry) => entry.codigo === productCode)
+    if (!product) return { error: 'No se encontró el producto.' }
+    try {
+      await deactivateStaffProduct(productCode)
+      const deactivatedProduct = { ...product, active: false }
+      setAllProducts((currentProducts) => currentProducts.map((entry) =>
+        entry.codigo === productCode ? deactivatedProduct : entry,
+      ))
+      return { product: deactivatedProduct }
+    } catch (error) {
+      return { error: error.message }
+    }
+  }
+
   const reload = () => {
     setError('')
     setLoading(true)
@@ -152,7 +147,19 @@ export function CatalogProvider({ children }) {
   const products = allProducts.filter((product) => product.active !== false)
 
   return (
-    <CatalogContext.Provider value={{ categories: CATEGORIES, products, adminProducts: allProducts, loading, error, reload, stockOverrides, applyNewStock, updateStock, createProduct, updateProduct, deactivateProduct }}>
+    <CatalogContext.Provider value={{
+      categories: CATEGORIES,
+      products,
+      adminProducts: allProducts,
+      loading,
+      error,
+      reload,
+      loadStaffProducts,
+      updateStock,
+      createProduct,
+      updateProduct,
+      deactivateProduct,
+    }}>
       {children}
     </CatalogContext.Provider>
   )
