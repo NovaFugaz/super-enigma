@@ -7,13 +7,11 @@ import {
   updateManagedUser,
   USER_ROLES,
 } from '../../services/mockAuth.js'
-import { getOrders } from '../../services/mockOrders.js'
-import { downloadSalesReport } from '../../services/salesReport.js'
+import { downloadSalesReport, fetchSalesReport } from '../../services/salesReport.js'
 import { formatCLP } from '../../utils/format.js'
 
 const ROLE_LABELS = { customer: 'Cliente', seller: 'Vendedor', admin: 'Administrador' }
 const TAB_LABELS = { dashboard: 'Dashboard', usuarios: 'Usuarios y roles', productos: 'Productos', inventario: 'Inventario' }
-const DASHBOARD_MOUNTED_AT = Date.now()
 const EMPTY_USER = { name: '', phone: '', email: '', password: '', role: 'customer' }
 const EMPTY_PRODUCT = {
   codigo: '', categoria: 'guitarras-acusticas', nombre: '', marca: '', modelo: '',
@@ -60,20 +58,14 @@ export default function AdminPanelPage() {
   const [inventoryQuery, setInventoryQuery] = useState('')
   const [stockDrafts, setStockDrafts] = useState({})
   const [threshold, setThreshold] = useState(readThreshold)
-  const [orders, setOrders] = useState(getOrders)
   const [period, setPeriod] = useState('30')
+  const [salesReport, setSalesReport] = useState(null)
+  const [reportLoading, setReportLoading] = useState(true)
+  const [reportError, setReportError] = useState('')
+  const [reportReloadKey, setReportReloadKey] = useState(0)
+  const [exportingReport, setExportingReport] = useState(false)
+  const [reportExportError, setReportExportError] = useState('')
   const [feedback, setFeedback] = useState('')
-
-  useEffect(() => {
-    const refreshOrders = () => setOrders(getOrders())
-    refreshOrders()
-    window.addEventListener('sonido-vivo:order-status-changed', refreshOrders)
-    window.addEventListener('storage', refreshOrders)
-    return () => {
-      window.removeEventListener('sonido-vivo:order-status-changed', refreshOrders)
-      window.removeEventListener('storage', refreshOrders)
-    }
-  }, [])
 
   useEffect(() => {
     if (catalogLoading) return undefined
@@ -92,6 +84,24 @@ export default function AdminPanelPage() {
       active = false
     }
   }, [catalogLoading, loadStaffProducts, staffProductsReloadKey])
+
+  const reportDays = period === 'all' ? undefined : Number(period)
+  useEffect(() => {
+    let active = true
+    fetchSalesReport(reportDays)
+      .then((report) => {
+        if (active) setSalesReport(report)
+      })
+      .catch((error) => {
+        if (active) setReportError(error.message)
+      })
+      .finally(() => {
+        if (active) setReportLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [reportDays, reportReloadKey])
 
   const filteredUsers = useMemo(() => {
     const query = userQuery.trim().toLowerCase()
@@ -118,42 +128,36 @@ export default function AdminPanelPage() {
     )
   }, [adminProducts, inventoryQuery])
 
-  const salesOrders = useMemo(() => {
-    const cutoff = period === 'all' ? 0 : DASHBOARD_MOUNTED_AT - Number(period) * 86_400_000
-    return orders.filter((order) =>
-      order.status !== 'rechazado' &&
-      (order.demo || order.payment?.status === 'aprobado') &&
-      new Date(order.createdAt).getTime() >= cutoff,
-    )
-  }, [orders, period])
-
-  const salesTotal = salesOrders.reduce((sum, order) => sum + order.total, 0)
-  const salesUnits = salesOrders.reduce(
-    (sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
-    0,
-  )
-  const topProducts = useMemo(() => {
-    const totals = new Map()
-    salesOrders.forEach((order) => order.items.forEach((item) => {
-      const current = totals.get(item.code) ?? { code: item.code, name: item.name, units: 0, sales: 0 }
-      current.units += item.quantity
-      current.sales += item.lineTotal
-      totals.set(item.code, current)
-    }))
-    return [...totals.values()].sort((left, right) => right.sales - left.sales).slice(0, 5)
-  }, [salesOrders])
-
-  const salesByDate = useMemo(() => {
-    const totals = new Map()
-    salesOrders.forEach((order) => {
-      const date = new Date(order.createdAt).toLocaleDateString('es-CL')
-      totals.set(date, (totals.get(date) ?? 0) + order.total)
-    })
-    return [...totals.entries()].slice(-14)
-  }, [salesOrders])
+  const salesTotal = salesReport?.totalSales ?? 0
+  const salesUnits = salesReport?.unitsSold ?? 0
+  const salesOrdersCount = salesReport?.orderCount ?? 0
+  const topProducts = salesReport?.topProducts ?? []
+  const salesByDate = (salesReport?.salesByDate ?? []).map(({ date, total }) => {
+    const [year, month, day] = date.split('-')
+    return [`${day}/${month}/${year}`, total]
+  })
   const maxDailySales = Math.max(1, ...salesByDate.map(([, amount]) => amount))
   const lowStockCount = adminProducts.filter((product) => product.active !== false && product.stock <= threshold).length
   const activeUsersCount = users.filter((account) => account.active).length
+
+  const handleReportPeriodChange = (event) => {
+    setPeriod(event.target.value)
+    setReportLoading(true)
+    setReportError('')
+    setReportExportError('')
+  }
+
+  const handleReportExport = async () => {
+    setExportingReport(true)
+    setReportExportError('')
+    try {
+      await downloadSalesReport(reportDays)
+    } catch (error) {
+      setReportExportError(error.message)
+    } finally {
+      setExportingReport(false)
+    }
+  }
 
   const refreshUsers = () => setUsers(listManagedUsers())
 
@@ -327,7 +331,7 @@ export default function AdminPanelPage() {
           <div className="admin-dashboard-toolbar">
             <label className="seller-control admin-period-control">
               <span>Período de ventas</span>
-              <select className="form-input" value={period} onChange={(event) => setPeriod(event.target.value)}>
+              <select className="form-input" value={period} onChange={handleReportPeriodChange}>
                 <option value="7">Últimos 7 días</option>
                 <option value="30">Últimos 30 días</option>
                 <option value="90">Últimos 90 días</option>
@@ -335,44 +339,62 @@ export default function AdminPanelPage() {
                 <option value="all">Todo el historial</option>
               </select>
             </label>
-            <button type="button" className="btn-primary" onClick={() => downloadSalesReport(salesOrders)}>
-              Exportar reporte CSV
+            <button type="button" className="btn-primary" disabled={reportLoading || exportingReport} onClick={handleReportExport}>
+              {exportingReport ? 'Exportando…' : 'Exportar reporte CSV'}
             </button>
           </div>
-          <div className="seller-metrics mt-4">
-            <div className="seller-metric"><span>Ventas del período</span><strong>{formatCLP(salesTotal)}</strong></div>
-            <div className="seller-metric"><span>Pedidos considerados</span><strong>{salesOrders.length}</strong></div>
-            <div className="seller-metric"><span>Unidades vendidas</span><strong>{salesUnits}</strong></div>
-            <div className="seller-metric"><span>Usuarios activos</span><strong>{activeUsersCount}</strong></div>
-            <div className="seller-metric"><span>Productos activos</span><strong>{adminProducts.filter((product) => product.active !== false).length}</strong></div>
-            <div className="seller-metric"><span>Alertas de stock</span><strong>{lowStockCount}</strong></div>
-          </div>
+          {reportExportError && <p className="mt-3 text-sm text-red-700" role="alert">{reportExportError}</p>}
+          {reportLoading ? (
+            <p className="mt-5 text-sm text-costa-deep" role="status">Cargando reporte de ventas…</p>
+          ) : reportError ? (
+            <div className="mt-5 text-sm text-red-700" role="alert">
+              <p>No se pudo cargar el reporte: {reportError}</p>
+              <button type="button" className="auth-inline-link mt-2" onClick={() => {
+                setReportError('')
+                setReportLoading(true)
+                setReportReloadKey((key) => key + 1)
+              }}>
+                Reintentar
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="seller-metrics mt-4">
+                <div className="seller-metric"><span>Ventas del período</span><strong>{formatCLP(salesTotal)}</strong></div>
+                <div className="seller-metric"><span>Pedidos considerados</span><strong>{salesOrdersCount}</strong></div>
+                <div className="seller-metric"><span>Unidades vendidas</span><strong>{salesUnits}</strong></div>
+                <div className="seller-metric"><span>Usuarios activos</span><strong>{activeUsersCount}</strong></div>
+                <div className="seller-metric"><span>Productos activos</span><strong>{adminProducts.filter((product) => product.active !== false).length}</strong></div>
+                <div className="seller-metric"><span>Alertas de stock</span><strong>{lowStockCount}</strong></div>
+              </div>
 
-          <div className="admin-dashboard-grid mt-5">
-            <section className="admin-panel">
-              <h2 className="admin-panel-title">Ventas por fecha</h2>
-              {salesByDate.length === 0 ? <p className="text-sm text-costa-sage">Sin ventas en este período.</p> : (
-                <div className="admin-sales-chart" aria-label="Gráfico de ventas por fecha">
-                  {salesByDate.map(([date, amount]) => (
-                    <div className="admin-sales-column" key={date} title={`${date}: ${formatCLP(amount)}`}>
-                      <span className="admin-sales-bar" style={{ height: `${Math.max(6, amount / maxDailySales * 100)}%` }} />
-                      <span className="admin-sales-date">{date}</span>
+              <div className="admin-dashboard-grid mt-5">
+                <section className="admin-panel">
+                  <h2 className="admin-panel-title">Ventas por fecha</h2>
+                  {salesByDate.length === 0 ? <p className="text-sm text-costa-sage">Sin ventas en este período.</p> : (
+                    <div className="admin-sales-chart" aria-label="Gráfico de ventas por fecha">
+                      {salesByDate.map(([date, amount]) => (
+                        <div className="admin-sales-column" key={date} title={`${date}: ${formatCLP(amount)}`}>
+                          <span className="admin-sales-bar" style={{ height: `${Math.max(6, amount / maxDailySales * 100)}%` }} />
+                          <span className="admin-sales-date">{date}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </section>
-            <section className="admin-panel">
-              <h2 className="admin-panel-title">Productos top</h2>
-              {topProducts.length === 0 ? <p className="text-sm text-costa-sage">Sin ventas en este período.</p> : (
-                <ol className="admin-top-products">
-                  {topProducts.map((product, index) => (
-                    <li key={product.code}><span>{index + 1}. {product.name}<small>{product.units} unidades</small></span><strong>{formatCLP(product.sales)}</strong></li>
-                  ))}
-                </ol>
-              )}
-            </section>
-          </div>
+                  )}
+                </section>
+                <section className="admin-panel">
+                  <h2 className="admin-panel-title">Productos top</h2>
+                  {topProducts.length === 0 ? <p className="text-sm text-costa-sage">Sin ventas en este período.</p> : (
+                    <ol className="admin-top-products">
+                      {topProducts.map((product, index) => (
+                        <li key={product.code}><span>{index + 1}. {product.name}<small>{product.units} unidades</small></span><strong>{formatCLP(product.revenue)}</strong></li>
+                      ))}
+                    </ol>
+                  )}
+                </section>
+              </div>
+            </>
+          )}
         </section>
       )}
 
