@@ -11,6 +11,10 @@ const reportMocks = vi.hoisted(() => ({
   downloadSalesReport: vi.fn(),
 }))
 
+const userApiMocks = vi.hoisted(() => ({
+  fetchManagedUsers: vi.fn(),
+}))
+
 const productApiMocks = vi.hoisted(() => ({
   createStaffProduct: vi.fn(),
   deactivateStaffProduct: vi.fn(),
@@ -24,6 +28,11 @@ vi.mock('../services/catalogApi.js', () => ({
 }))
 
 vi.mock('../services/productApi.js', () => productApiMocks)
+
+vi.mock('../services/userApi.js', () => ({
+  ...userApiMocks,
+  USER_ROLES: ['customer', 'seller', 'admin'],
+}))
 
 vi.mock('../services/salesReport.js', () => reportMocks)
 
@@ -58,6 +67,7 @@ describe('admin sales dashboard integration', () => {
     vi.clearAllMocks()
     fetchProducts.mockResolvedValue(PRODUCTS)
     productApiMocks.fetchStaffProducts.mockResolvedValue(PRODUCTS)
+    userApiMocks.fetchManagedUsers.mockResolvedValue([])
     reportMocks.fetchSalesReport.mockImplementation(async (days) => salesReport(days ?? null))
     reportMocks.downloadSalesReport.mockResolvedValue(undefined)
   })
