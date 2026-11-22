@@ -18,6 +18,7 @@ import com.patito.sonidoVivo.service.PasswordResetService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,10 +41,12 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @ResponseStatus(HttpStatus.CREATED)
+    @ResponseStatus(HttpStatus.OK)
     @Operation(summary = "Iniciar sesión y obtener token JWT")
-    @ApiResponse(responseCode = "400", description = "Formato de solicitud inválido")
-    @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")
+    @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Inicio de sesión exitoso"),
+    @ApiResponse(responseCode = "400", description = "Formato de solicitud inválido"),
+    @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")})
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
     }
