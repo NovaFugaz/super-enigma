@@ -44,5 +44,128 @@ Para borrar también los datos persistidos de MySQL y comenzar de cero:
 ```powershell
 docker compose down --volumes
 ```
+## importante
 
-El frontend sigue ejecutándose por separado desde `frontend` con `npm run dev`. No es necesario contenerizarlo para probar el backend o Swagger.
+- El frontend sigue ejecutándose por separado desde `frontend` con `npm run dev`. No es necesario contenerizarlo para probar el backend o Swagger.
+
+- También se puede levantar el backend mediante 'Xampp' y mvn 'spring-boot:run'
+mailpit se levanta por separado en una terminal.
+
+## Estructura del proyecto
+
+```text
+backend/
+├── README.md
+└── sonidoVivo/
+    ├── .dockerignore
+    ├── .gitattributes
+    ├── .mvn/
+    │   └── wrapper/
+    │       └── maven-wrapper.properties
+    ├── Dockerfile
+    ├── README.md
+    ├── compose.yml                      # MySQL + backend + Mailpit
+    ├── mvnw
+    ├── mvnw.cmd
+    ├── pom.xml
+    └── src/
+        ├── main/
+        │   ├── java/com/patito/sonidoVivo/
+        │   │   ├── SonidoVivoApplication.java
+        │   │   ├── config/
+        │   │   │   ├── DatosDemo.java           # usuarios demo
+        │   │   │   ├── DemoCatalogSeeder.java   # catálogo demo
+        │   │   │   ├── JwtConfig.java
+        │   │   │   ├── SecurityConfig.java      # reglas por rol y CORS
+        │   │   │   └── SwaggerConfig.java
+        │   │   ├── controller/
+        │   │   │   ├── AdminController.java
+        │   │   │   ├── AuthController.java
+        │   │   │   ├── CategoryController.java
+        │   │   │   ├── LocationController.java
+        │   │   │   ├── OrderController.java
+        │   │   │   ├── ProductController.java
+        │   │   │   ├── ProductStaffController.java
+        │   │   │   ├── ReportController.java
+        │   │   │   └── StaffOrderController.java
+        │   │   ├── dto/
+        │   │   │   ├── auth/
+        │   │   │   │   ├── AuthResponse.java
+        │   │   │   │   ├── LoginRequest.java
+        │   │   │   │   ├── PasswordResetConfirmRequest.java
+        │   │   │   │   ├── PasswordResetRequest.java
+        │   │   │   │   ├── PasswordResetResponse.java
+        │   │   │   │   ├── RegisterRequest.java
+        │   │   │   │   └── ResetPasswordRequest.java
+        │   │   │   ├── catalogo/
+        │   │   │   │   ├── CategoryResponse.java
+        │   │   │   │   ├── ProductFilter.java
+        │   │   │   │   ├── ProductRequest.java
+        │   │   │   │   ├── ProductResponse.java
+        │   │   │   │   └── StockRequest.java
+        │   │   │   ├── common/
+        │   │   │   │   ├── ApiError.java
+        │   │   │   │   └── Patterns.java
+        │   │   │   ├── pedido/
+        │   │   │   │   ├── OrderCreateRequest.java
+        │   │   │   │   ├── OrderHistoryResponse.java
+        │   │   │   │   ├── OrderItemRequest.java
+        │   │   │   │   ├── OrderItemResponse.java
+        │   │   │   │   ├── OrderMineResponse.java
+        │   │   │   │   ├── OrderResponse.java
+        │   │   │   │   ├── OrderStatusRequest.java
+        │   │   │   │   └── OrderTrackingResponse.java
+        │   │   │   ├── reports/
+        │   │   │   │   └── SalesReportResponse.java
+        │   │   │   ├── ubicacion/
+        │   │   │   │   └── LocationResponse.java
+        │   │   │   └── usuario/
+        │   │   │       ├── UserCreateRequest.java
+        │   │   │       ├── UserResponse.java
+        │   │   │       └── UserUpdateRequest.java
+        │   │   ├── enums/
+        │   │   │   ├── LocationType.java
+        │   │   │   ├── OrderStatus.java
+        │   │   │   ├── Role.java
+        │   │   │   └── ShippingMethod.java
+        │   │   ├── exception/
+        │   │   │   └── GlobalExceptionHandler.java
+        │   │   ├── model/
+        │   │   │   ├── Category.java
+        │   │   │   ├── CustomerOrder.java
+        │   │   │   ├── Location.java
+        │   │   │   ├── OrderItem.java
+        │   │   │   ├── OrderStatusHistory.java
+        │   │   │   ├── PasswordResetToken.java
+        │   │   │   ├── Product.java
+        │   │   │   └── User.java
+        │   │   ├── repository/
+        │   │   │   ├── CategoryRepository.java
+        │   │   │   ├── CustomerOrderRepository.java
+        │   │   │   ├── LocationRepository.java
+        │   │   │   ├── PasswordResetTokenRepository.java
+        │   │   │   ├── ProductRepository.java
+        │   │   │   └── UserRepository.java
+        │   │   └── service/
+        │   │       ├── AuthService.java
+        │   │       ├── CategoryService.java
+        │   │       ├── LocationService.java
+        │   │       ├── OrderService.java
+        │   │       ├── PasswordResetService.java
+        │   │       ├── ProductService.java
+        │   │       ├── ReportService.java
+        │   │       ├── TokenService.java
+        │   │       └── UserService.java
+        │   └── resources/
+        │       ├── application.properties
+        │       └── data/
+        │           └── demo-catalog.json
+        └── test/
+            └── java/com/patito/sonidoVivo/
+                ├── SonidoVivoApplicationTests.java
+                ├── config/
+                │   └── SecurityConfigTest.java
+                └── service/
+                    ├── OrderServiceTest.java
+                    └── PasswordResetServiceTest.java
+```

@@ -7,19 +7,19 @@ El proyecto incluye un frontend **React + Vite + Tailwind CSS** y una API **Spri
 ---
 
 ## Tecnologías
-
+ 
 | Área | Tecnología |
 | --- | --- |
 | UI | React 19, React Router 7 |
 | Build | Vite 8 |
 | API | Spring Boot, Java 21 |
 | Persistencia | MySQL 8.4 + Spring Data JPA |
-| Autenticación | JWT Bearer |
+| Autenticación | JWT Bearer (Spring Security OAuth2 Resource Server) |
+| Documentación API | Swagger UI (springdoc-openapi) |
 | Estilos | Tailwind CSS 4 |
 | Mapa | Leaflet + react-leaflet |
-| Catálogo | REST API (`GET /api/products`) |
 | Calidad | Vitest + Testing Library, oxlint |
-
+ 
 ---
 
 ## Instalación y ejecución local
@@ -80,7 +80,7 @@ Los pedidos de demostración que se precargaban en el prototipo anterior no se c
 | `/nosotros` | Quiénes somos |
 | `/contacto` | Contacto y mapa interactivo (tienda y puntos de retiro) |
 | `/login` · `/registro` · `/recuperar` | Autenticación |
-| `/403` | Acceso denegado (simulado) |
+| `/403` | Acceso denegado (se muestra al entrar a una ruta sin el rol requerido) |
 
 ### Por rol (rutas protegidas)
 
@@ -115,15 +115,16 @@ Cada cambio de estado queda en el log de auditoría del pedido (quién, qué y c
 ---
 
 ## Estructura del proyecto
-
+ 
 ```text
 super-enigma/
-├── documentacion/              # Documentación del proyecto (ERS)
+├── backend/sonidoVivo/         # API Spring Boot, Docker Compose y su propio README
+├── database/                   # Script SQL de apoyo
+├── documentacion/              # Documentación del proyecto (ERS, cobertura de testing)
 ├── frontend/
-│   ├── public/
-│   │   └── catalogo.xlsx       # Archivo Excel del prototipo anterior
+│   ├── public/                 # Archivos estáticos (favicon, íconos)
 │   ├── src/
-│   │   ├── __tests__/          # Pruebas unitarias (Vitest)
+│   │   ├── __tests__/          # Pruebas (Vitest)
 │   │   ├── assets/             # Imágenes y logos
 │   │   ├── components/
 │   │   │   ├── cart/           # CartItem, CartSidebar
@@ -131,8 +132,7 @@ super-enigma/
 │   │   │   ├── common/         # FormField, PasswordField, StoreMap, EmptyState...
 │   │   │   └── layout/         # Header, Navbar, Footer, MainLayout, Newsletter
 │   │   ├── context/            # AuthContext, CartContext, CatalogContext
-│   │   ├── data/               # catalog.js (catálogo de respaldo)
-│   │   ├── hooks/              # useAuth, useCart, useCatalog
+│   │   ├── hooks/              # useAuth, useCart, useCatalog, useLocations
 │   │   ├── modules/            # Una carpeta por dominio
 │   │   │   ├── about/
 │   │   │   ├── admin/          # Panel de administración
@@ -141,8 +141,8 @@ super-enigma/
 │   │   │   ├── catalog/        # Inicio, catálogo, detalle
 │   │   │   ├── contact/        # Contacto y mapa
 │   │   │   └── seller/         # Panel de vendedor
-│   │   ├── routes/             # AppRouter y ProtectedRoute (RBAC)
-│   │   ├── services/           # Mocks: auth, pedidos, catálogo xlsx, ubicaciones, reportes
+│   │   ├── routes/             # AppRouter y ProtectedRoute (control por rol)
+│   │   ├── services/           # Cliente HTTP y servicios de la API
 │   │   ├── styles/             # Tailwind y estilos globales
 │   │   ├── test/               # Setup de pruebas
 │   │   ├── utils/              # Cálculo de carrito, formato de moneda
