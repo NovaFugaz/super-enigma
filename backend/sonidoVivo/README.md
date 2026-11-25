@@ -8,6 +8,8 @@ docker compose up --build
 
 La primera compilación puede tardar mientras Maven descarga dependencias. Cuando termine, la API queda en `http://localhost:8080` y Swagger en `http://localhost:8080/swagger-ui.html`. MySQL queda disponible desde el host en el puerto `3307`; dentro de Compose, el backend se conecta al servicio `db` en el puerto `3306`.
 
+Hibernate usa explícitamente el dialecto MySQL para evitar que la autodetección elija MariaDB y genere DDL incompatible al crear claves foráneas.
+
 Para recuperar una contraseña, usa `/recuperar` en el frontend. Los mensajes de correo no salen a Internet: se capturan en Mailpit, disponible en `http://localhost:8025` (SMTP del contenedor: `mailpit:1025`, SMTP desde el host: `localhost:1025`). Abre el mensaje más reciente y sigue su enlace antes de que expire, en 15 minutos.
 
 Los valores de usuario y contraseñas incluidos en Compose son solo para desarrollo local. Copia `.env.example` a `.env` para ajustar los valores; `.env` está excluido de Git. El JWT de ejemplo también es público y no debe usarse como secreto en producción. Si cambias las credenciales de MySQL después de que ya se creó el volumen, MySQL conserva las credenciales iniciales; para una base demo nueva puedes borrar el volumen con el comando indicado abajo.
