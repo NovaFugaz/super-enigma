@@ -10,7 +10,16 @@ La primera compilación puede tardar mientras Maven descarga dependencias. Cuand
 
 Para recuperar una contraseña, usa `/recuperar` en el frontend. Los mensajes de correo no salen a Internet: se capturan en Mailpit, disponible en `http://localhost:8025` (SMTP del contenedor: `mailpit:1025`, SMTP desde el host: `localhost:1025`). Abre el mensaje más reciente y sigue su enlace antes de que expire, en 15 minutos.
 
-Los valores de usuario, contraseñas y JWT incluidos en `compose.yml` son solo para desarrollo local. Se pueden reemplazar mediante variables de entorno o un archivo `.env` local (no se debe subir ese archivo al repositorio). Si cambias las credenciales de MySQL después de que ya se creó el volumen, MySQL conserva las credenciales iniciales; para una base demo nueva puedes borrar el volumen con el comando indicado abajo.
+Los valores de usuario y contraseñas incluidos en Compose son solo para desarrollo local. Copia `.env.example` a `.env` para ajustar los valores; `.env` está excluido de Git. El JWT de ejemplo también es público y no debe usarse como secreto en producción. Si cambias las credenciales de MySQL después de que ya se creó el volumen, MySQL conserva las credenciales iniciales; para una base demo nueva puedes borrar el volumen con el comando indicado abajo.
+
+Para correr el backend con Maven contra el MySQL de Compose, inicia solo la base y Mailpit y luego ejecuta Spring Boot en esta carpeta:
+
+```powershell
+docker compose up -d db mailpit
+.\mvnw.cmd spring-boot:run
+```
+
+Los valores predeterminados de `application.properties` ya apuntan al puerto publicado `3307` y a las credenciales locales de Compose. Si los cambias en `.env`, recuerda que Maven no carga ese archivo automáticamente: debes configurarlo en el entorno `DB_URL`, `DB_USER`, `DB_PASSWORD` y, si corresponde, `JWT_SECRET`. `database/init.sql` es un apoyo opcional para preparar una instalación local independiente; Compose inicializa su base y usuario mediante `MYSQL_DATABASE`, `MYSQL_USER` y `MYSQL_PASSWORD`.
 
 ## Variables de entorno y memoria
 
@@ -27,7 +36,7 @@ Estos valores se pueden ajustar desde un `.env` local:
 | `MYSQL_USER` / `MYSQL_PASSWORD` | `sonidovivo` / `sonidovivo-local` | Usuario de aplicación en MySQL |
 | `MYSQL_ROOT_PASSWORD` | `root-local-only` | Clave root de MySQL |
 | `MYSQL_PORT` | `3307` | Puerto de MySQL expuesto al host |
-| `JWT_SECRET` | Clave de ejemplo local | Clave JWT; debe tener al menos 32 caracteres |
+| `JWT_SECRET` | Valor público de demo (no es un secreto) | Clave JWT; usa un valor privado de al menos 32 caracteres fuera del desarrollo local |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Orígenes web permitidos, separados por coma |
 | `FRONTEND_URL` | `http://localhost:5173` | Base del enlace de restablecimiento que se envía por correo |
 
@@ -48,8 +57,16 @@ docker compose down --volumes
 
 - El frontend sigue ejecutándose por separado desde `frontend` con `npm run dev`. No es necesario contenerizarlo para probar el backend o Swagger.
 
-- También se puede levantar el backend mediante 'Xampp' y mvn 'spring-boot:run'
-mailpit se levanta por separado en una terminal.
+- Con XAMPP (MySQL normalmente en `3306`), configura el puerto de la base antes de iniciar Maven. Ejecuta `../../database/init.sql` una vez en esa instancia para crear la base y el usuario local:
+
+  ```powershell
+  $env:DB_URL = "jdbc:mysql://localhost:3306/sonidovivo?createDatabaseIfNotExist=true"
+  $env:DB_USER = "sonidovivo"
+  $env:DB_PASSWORD = "sonidovivo-local"
+  .\mvnw.cmd spring-boot:run
+  ```
+
+- Para recuperar contraseñas, levanta Mailpit por separado o usa el servicio `mailpit` de Compose.
 
 ## Estructura del proyecto
 
